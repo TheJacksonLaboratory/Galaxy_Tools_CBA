@@ -1,0 +1,23 @@
+<tool id="ymaze" name="ymaze" version="0.0.1">
+    <description>CBA Y-MAZE SPONTANEOUS ALTERATION EXPERIMENT</description>
+    <command interpreter="Rscript">
+    y_maze_data_processing_macro_v3.R $input1 $out_file1 > $out_file2 
+    </command>
+
+    <inputs>
+        <param name="input1" type="data" multiple="True" label="Select lines from"/>
+    </inputs>
+
+    <outputs>
+        <data name="out_file1" format="csv" label="${tool.name}_sponalt_val.csv"/>
+        <data name="out_file2" format="txt"/>
+    </outputs>
+
+    <help>
+
+
+**What it does**
+Y MAZE DATA PROCESSING MACRO v3
+
+</help>
+</tool>

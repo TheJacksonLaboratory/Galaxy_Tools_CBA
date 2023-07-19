@@ -1,0 +1,24 @@
+<tool id="select_directory" name="Select Test Directory" version="0.0.1">
+    <description>CBA Y-MAZE SPONTANEOUS ALTERATION EXPERIMENT</description>
+    <command interpreter="Rscript">
+    Y_MAZE_DATA_PROCESSING_MACROv4.R $test_dir $out_file1 > $out_file2
+    </command>
+
+
+<code file="cba_tool_form.py" />
+ <inputs>
+    <param format="text" name="test_dir" label="Ymaze Test Directory" type="select" dynamic_options="get_dir_options('/shares/MNBF/Testing Data/TEMP for Spont Alt Tracks')" />
+</inputs>
+<outputs>
+    <data name="out_file1" format="xlsx" metadata_source="input1"/>
+    <data name="out_file2" format="txt"/>
+</outputs>
+
+<help>
+
+
+**What it does:**
+Y MAZE DATA PROCESSING MACRO v3
+
+</help>
+</tool>

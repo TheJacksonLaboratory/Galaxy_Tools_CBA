@@ -1,0 +1,24 @@
+<tool id="will_add" name="Example/Explainer tool" version="0.0.1">
+    <description>Add string to dataset</description>
+    <command interpreter="/projects/galaxy/tools/cba/p3env/bin/python">
+    galaxy_test_tool.py  -f $input1 -s $s > $out_file1
+    </command>
+
+ <inputs>
+    <param format="txt" name="input1" type="data" label="Select lines from"/>
+    <param format="txt" name="s" type="text" value=""  label="String to Add" />
+
+    
+</inputs>
+    <outputs>
+        <data name="out_file1" format="input" metadata_source="input1"/>
+    </outputs>
+
+    <help>
+
+
+**What it does**
+Add string to dataset
+
+</help>
+</tool>
