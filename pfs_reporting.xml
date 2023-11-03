@@ -14,17 +14,17 @@
     <param format="txt" name="from_test_date" type="text" label="From Test Date *05-29-2012" />
     <param format="txt" name="to_test_date" type="text" label="To Test Date *05-29-2020" />	
     <param name="options" type="select" label="Get" multiple="true" display="checkboxes">
-  	<option value="p">Published Only:</option>
-  	<option value="s">Summary Output:</option>
-        <option value="i">Include Inactive:</option>
+		<option value="p">Published:</option>
+		<option value="u">Unpublished:</option>
+		<option value="s">Summary Output:</option>
+		<option value="i">Include Inactive:</option>
     </param>
- 
-</inputs>
-    <outputs>
-        <data name="out_file1" format="xlsx" metadata_source="input1"/>
-    </outputs>
+ </inputs>
+<outputs>
+    <data name="out_file1" format="xlsx" metadata_source="input1"/>
+</outputs>
 
-    <help>
+<help>
 
 
 **What it does:**

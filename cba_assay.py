@@ -39,6 +39,7 @@ def meta_column_names():
         "EXPERIMENT.JAX_EXPERIMENT_STARTDATE": "Experiment_Date",
         "EXPERIMENT.EXPERIMENT_PROTOCOL.Name":"Protocol_Name",
         "EXPERIMENT.EXPERIMENT_TESTER.Name":"Tester_Name",
+        "EXPERIMENT.EXPERIMENT_ROOM.Name":"Procedure_Room",
     #ASSAY ATTRIBUTES IN COMMON
         "ASSAY_DATA.Barcode":"Experiment_Barcode",#Can't get this to work - djp
             "ASSAY_DATA.CBA_ASSAY_ANIMALOBSERVATIONS":"Animal_Health_Observations",
@@ -1811,6 +1812,7 @@ def meta_column_order():
         "EXPERIMENT.JAX_EXPERIMENT_STARTDATE",
         "EXPERIMENT.EXPERIMENT_PROTOCOL.Name",
         "EXPERIMENT.EXPERIMENT_TESTER.Name",
+        "EXPERIMENT.EXPERIMENT_ROOM.Name",
         "ASSAY_DATA.JAX_ASSAY_AGE",
         "ASSAY_DATA.JAX_ASSAY_TESTORDER"
     ]

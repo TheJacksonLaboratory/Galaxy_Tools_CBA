@@ -39,6 +39,7 @@ def main():
         raise Exception("User %s does not have access to CBA" % args.user) 
 
     publishedBool = False
+    unpublishedBool = False
     inactiveBool = False
     summaryBool = False
 
@@ -46,6 +47,7 @@ def main():
         publishedBool = True if opt == 'p' else publishedBool
         inactiveBool = True if opt == 'i' else inactiveBool
         summaryBool = True if opt == 's' else summaryBool
+        unpublishedBool = True if opt == 'u' else unpublishedBool
     
     cbbList = returnList(args.batch) if args.batch else []
 
@@ -65,7 +67,7 @@ def main():
      
     
     newObj = runQuery.CBAAssayHandler(cbbList, requestList, templateList, \
-        f_from_test_date, f_to_test_date, publishedBool, inactiveBool, summaryBool, SERVICE_USERNAME, SERVICE_PASSWORD)
+        f_from_test_date, f_to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, SERVICE_USERNAME, SERVICE_PASSWORD) # Need to add unpublishedBool
         
     dfList = (newObj.controller())
     data = newObj.writeFile(dfList)

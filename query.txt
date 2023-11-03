@@ -1,0 +1,8 @@
+https://jacksonlabstest.platformforscience.com/TEST/odata/EMPLOYEE?&expand=PROJECT&$filter=contains(CI_USERNAME, 'michael.mcfarland@jax.org') and PROJECT/any(a:a/Name eq 'Center for Biometric Analysis')
+
+
+https://jacksonlabstest.platformforscience.com/TEST/odata/CBA_OPEN_FIELD_EXPERIMENT_SAMPLE?$count=true&$expand=EXPERIMENT/pfs.CBA_OPEN_FIELD_EXPERIMENT($expand=EXPERIMENT_PROTOCOL,EXPERIMENT_TESTER,EXPERIMENT_ROOM),ENTITY/pfs.MOUSE_SAMPLE_LOT($expand=SAMPLE/pfs.MOUSE_SAMPLE($expand=MOUSESAMPLE_STRAIN,MOUSESAMPLE_MOUSE),MOUSESAMPLELOT_CBABATCH($expand=BATCH_CBAREQUEST)),ASSAY_DATA/pfs.CBA_OPEN_FIELD_ASSAY_DATA($expand=EXPERIMENT_SAMPLE($expand=DERIVED_FROM($expand=INTERMEDIATE_ASSAY_DATA/pfs.INTERMEDIATE_CBA_OPEN_FIELD_ASSAY_DATA)))&$filter=(ENTITY/pfs.MOUSE_SAMPLE_LOT/MOUSESAMPLELOT_CBABATCH/Barcode eq 'CBB1255' ) and (Active eq True and EXPERIMENT/Active eq True and ENTITY/pfs.MOUSE_SAMPLE_LOT/Active eq True and ENTITY/pfs.MOUSE_SAMPLE_LOT/SAMPLE/pfs.MOUSE_SAMPLE/Active eq True)
+
+https://jacksonlabstest.platformforscience.com/TEST/odata/ENTITY_TYPE('CBA_OPEN_FIELD_ASSAY')/TYPE_ATTRIBUTES?$count=true&$expand=DATA_TYPE/pfs.FLOATING_POINT&$filter=(DATA_TYPE/EntityTypeName eq 'FLOATING_POINT' and DATA_TYPE/pfs.FLOATING_POINT/FORMAT_STRING ne null)
+
+https://jacksonlabstest.platformforscience.com/TEST/odata/ENTITY_TYPE('CBA_OPEN_FIELD_ASSAY')/TYPE_ATTRIBUTES?$count=true&$expand=DATA_TYPE/pfs.USER_EQUATION&$filter=(DATA_TYPE/EntityTypeName eq 'USER_EQUATION' and DATA_TYPE/pfs.USER_EQUATION/FORMAT_STRING ne null)

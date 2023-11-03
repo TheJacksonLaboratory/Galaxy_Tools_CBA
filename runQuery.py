@@ -42,7 +42,7 @@ def flatten_json(y):
 class QueryHandler():
     
     def __init__(self, email, password):
-        self.queryBase = r"https://jacksonlabs.platformforscience.com/PROD/odata/"
+        self.queryBase = r"https://jacksonlabstest.platformforscience.com/TEST/odata/"
         self.email = email
         self.password = password 
 
@@ -69,7 +69,9 @@ class QueryHandler():
 
         my_auth = HTTPBasicAuth(self.email, self.password)
         query = queryString
-        result = requests.get(query, auth=my_auth)
+
+      #  result = requests.get(query, auth=my_auth)
+        result = requests.get(query, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=5000"}) #djp 9/27/2023        
 
         # print(result)
         if result_format == 'xml':
@@ -82,6 +84,7 @@ class QueryHandler():
                 return None
             else:
                 allJson = pd.DataFrame([flatten_json(d) for d in content['value']])
+#                allJson.to_csv('/tmp/allJson.csv',mode='a')
 
                 self.max_records = content.get("@odata.count")
 
@@ -197,11 +200,11 @@ class QueryHandler():
 
 class CBAAssayHandler(QueryHandler):
     
-    def __init__(self, cbbList, requestList, templateList, fromDate, toDate, publishedBool, inactiveBool, summaryBool, email, password):
+    def __init__(self, cbbList, requestList, templateList, fromDate, toDate, publishedBool, unpublishedBool, inactiveBool, summaryBool, email, password):
         QueryHandler.__init__(self, email, password)
 
         # using template_instance as a literal that must be replaced with the actual experiment name before running
-        self.baseExpansion = "?$count=true&$expand=EXPERIMENT/pfs.template_instance($expand=EXPERIMENT_PROTOCOL,EXPERIMENT_TESTER)," \
+        self.baseExpansion = "?$count=true&$expand=EXPERIMENT/pfs.template_instance($expand=EXPERIMENT_PROTOCOL,EXPERIMENT_TESTER,EXPERIMENT_ROOM)," \
                             "ENTITY/pfs.MOUSE_SAMPLE_LOT" \
                             "($expand=SAMPLE/pfs.MOUSE_SAMPLE($expand=MOUSESAMPLE_STRAIN,MOUSESAMPLE_MOUSE)," \
                             "MOUSESAMPLELOT_CBABATCH($expand=BATCH_CBAREQUEST))" 
@@ -217,7 +220,10 @@ class CBAAssayHandler(QueryHandler):
         # these are additonal criteria that are added to the request, batch or experiment values
         self.fromdateInitFilter = r"EXPERIMENT/pfs.template_instance/JAX_EXPERIMENT_STARTDATE ge "
         self.todateInitFilter = r"EXPERIMENT/pfs.template_instance/JAX_EXPERIMENT_STARTDATE le "
+		
         self.publInitFilter = r"EXPERIMENT/pfs.template_instance/PUBLISHED eq True"
+        self.unpublInitFilter = r"EXPERIMENT/pfs.template_instance/PUBLISHED eq False"
+		
         self.activeFilter = r"Active eq True and " \
                              "EXPERIMENT/Active eq True and " \
                              "ENTITY/pfs.MOUSE_SAMPLE_LOT/Active eq True and " \
@@ -229,6 +235,7 @@ class CBAAssayHandler(QueryHandler):
         self.fromdate = fromDate
         self.todate = toDate
         self.published = publishedBool
+        self.unpublished = unpublishedBool
         self.inactive = inactiveBool
         self.summary = summaryBool
 
@@ -290,7 +297,7 @@ class CBAAssayHandler(QueryHandler):
             queryString = self.queryBase + template + '_SAMPLE' \
                 + baseExpansion + f",ASSAY_DATA/pfs.{template.replace('_EXPERIMENT', '_ASSAY_DATA')}" \
                             f"($expand=EXPERIMENT_SAMPLE($expand=DERIVED_FROM" \
-                            f"($expand=INTERMEDIATE_ASSAY_DATA/pfs.INTERMEDIATE_{template.replace('_EXPERIMENT', '_ASSAY_DATA')})))&"
+                            f"($expand=INTERMEDIATE_ASSAY_DATA/pfs.INTERMEDIATE_{template.replace('_EXPERIMENT', '_ASSAY_DATA')};$orderby=Sequence)))&"
 
             # create filter condition for each request or batch entered
             if len(entityList) > 0:
@@ -351,12 +358,20 @@ class CBAAssayHandler(QueryHandler):
 
         append = "$filter" in query
 
-        if self.published:
+        # User can request published AND unpublished, published OR unpublished, or NEITHER
+        if self.published == True and self.unpublished == False:
             if append:
                 filters += r" and (" + self.publInitFilter  + ")"
             else:
                 filters += r"$filter=(" + self.publInitFilter  + ")"
                 append = True
+        elif self.published == False and self.unpublished == True:
+            if append:
+                filters += r" and (" + self.unpublInitFilter  + ")"
+            else:
+                filters += r"$filter=(" + self.unpublInitFilter  + ")"
+                append = True
+        # Else they're either both true or both false. Then we don't care, i.e. no filtering
 
         if self.fromdate:
             filterStr = self.fromdateInitFilter   + f"{self.fromdate}"
