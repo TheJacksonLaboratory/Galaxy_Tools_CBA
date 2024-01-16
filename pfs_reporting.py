@@ -23,6 +23,7 @@ def main():
     parser.add_argument("-t", "--to_test_date", help = "Show Output", nargs='?', const='')
     parser.add_argument("-o", "--options", help = "Show Output", nargs='?', const='')
     parser.add_argument("-u", "--user", help = "Show Output")
+    parser.add_argument("-j", "--jaxstrain", help = "Show Output", nargs='?', const='')
     args = parser.parse_args() 
    
     public_config = configparser.ConfigParser()
@@ -42,7 +43,8 @@ def main():
     unpublishedBool = False
     inactiveBool = False
     summaryBool = False
-
+    jaxstrain = ''
+    
     for opt in args.options.split(","):
         publishedBool = True if opt == 'p' else publishedBool
         inactiveBool = True if opt == 'i' else inactiveBool
@@ -64,10 +66,11 @@ def main():
     else:
         f_to_test_date = None
  
-     
+    if args.jaxstrain:
+        jaxstrain = args.jaxstrain
     
     newObj = runQuery.CBAAssayHandler(cbbList, requestList, templateList, \
-        f_from_test_date, f_to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, SERVICE_USERNAME, SERVICE_PASSWORD) # Need to add unpublishedBool
+        f_from_test_date, f_to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD) # Need to add unpublishedBool
         
     dfList = (newObj.controller())
     data = newObj.writeFile(dfList)

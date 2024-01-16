@@ -19,6 +19,7 @@ SERVICE_PASSWORD = private_config["CORE LIMS"]["service password"]
 
 query = QueryHandler(SERVICE_USERNAME, SERVICE_PASSWORD)
 
+CBA_LINE_LIST = query.runLineQuery(query.queryBase + "MOUSE_SAMPLE?$select =Barcode&$expand=MOUSESAMPLE_STRAIN($select=Barcode)&$count=true")  # TBD
 CBA_REQUEST_LIST = query.runQuery(query.queryBase + "CBA_REQUEST?$count=true")["Barcode"].tolist()
 CBA_BATCH_LIST = query.runQuery(query.queryBase + "CBA_BATCH?$count=true")["Barcode"].tolist()
 CBA_EXPERIMENTS = query.get_experiments()
@@ -26,6 +27,7 @@ CBA_EXPERIMENTS.remove('CBA_CAGE_SPLITTING_EXPERIMENT') # cage experiment is not
 
 odata = {}
 
+odata['CBA_LINE_LIST'] = CBA_LINE_LIST
 odata['CBA_REQUEST_LIST'] = CBA_REQUEST_LIST
 odata['CBA_BATCH_LIST'] = CBA_BATCH_LIST
 odata['CBA_EXPERIMENTS'] = CBA_EXPERIMENTS

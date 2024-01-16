@@ -10,6 +10,9 @@ import cba_assay
 import base64
 import asyncio 
 from aiohttp_retry import RetryClient
+from datetime import datetime
+
+g_jrLs = []
 
 def flatten_json(y): 
     out = {} 
@@ -69,8 +72,12 @@ class QueryHandler():
 
         my_auth = HTTPBasicAuth(self.email, self.password)
         query = queryString
-
-      #  result = requests.get(query, auth=my_auth)
+        # Used for debugging. Remove for release.
+        f = open("/tmp/query_string.txt","a")
+        f.write(queryString)
+        f.write("\n")
+        f.close()
+      
         result = requests.get(query, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=5000"}) #djp 9/27/2023        
 
         # print(result)
@@ -121,6 +128,131 @@ class QueryHandler():
                 df = pd.DataFrame(allJson)
                 return df
 
+    def runLineQuery(self, queryString, result_format=None):
+        # Returns a list of JRs
+        jrSet = {""}
+        jrSet = self.runLineQueryUniquify(queryString, result_format) # Recursive
+        return sorted(jrSet)  # a list of iunique JRs
+        
+    def runLineQueryUniquify(self, queryString, result_format=None):
+        # Returns a set of JRs
+        
+        now = datetime.now()
+        current_time = now.strftime("%H:%M:%S")
+        print("Current Time =", current_time)
+        print(queryString)
+                
+        my_auth = HTTPBasicAuth(self.email, self.password)
+        result = requests.get(queryString, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=5000"})     
+
+        if result_format == 'xml':   # Never, ever true
+            return result.content
+        else: # default format is dataframe
+            jrSet = {""}
+            content = json.loads(result.content)
+
+            if len(content['value']) == 0:
+                return jrSet   # i.e. empty set
+            else:
+                self.max_records = content.get("@odata.count")
+                if self.max_records > len(content['value']):
+                    self.max_pagesize = self.total_count = len(content['value']) 
+                    self.skip_query = content.get("@odata.nextLink")
+                    self.page_counter = 0  # Needed??
+                    
+                global g_jrLs  # For debugging
+                    
+                jason_data_ls = content['value']
+                #print("json_data_ls: " + str(len(jason_data_ls)))
+                for jaxStrain in jason_data_ls:
+                    try:
+                        if jaxStrain != None and "MOUSESAMPLE_STRAIN" in jaxStrain:
+                            #g_jrLs.append(jaxStrain["MOUSESAMPLE_STRAIN"]["Barcode"])
+                            jrSet.add(jaxStrain["MOUSESAMPLE_STRAIN"]["Barcode"])
+                    except Exception:
+                                #print(jaxStrain) 
+                                continue
+
+                print("set size: " + str(len(jrSet))) 
+                print("")
+                """ with open('non-unique.txt', 'a') as f:
+                    for line in g_jrLs:
+                        f.write(f"{line}\n") """ 
+                
+                if self.skip_query:
+                    jrSet.update(self.runLineQueryUniquify(self.skip_query, result_format=None))
+                
+                return  jrSet
+            
+            
+    # Not called. This function has issues. Replaed with a recursive version
+    def runLineQueryAsync(self, queryString, result_format=None):
+        # Note: with async changes, queryString requires $count=true
+        # print(queryString)
+
+        my_auth = HTTPBasicAuth(self.email, self.password)
+        query = queryString
+        
+        
+        result = requests.get(query, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=5000"}) #djp 9/27/2023        
+
+        # print(result)
+        if result_format == 'xml':
+            return result.content
+        else: # default format is dataframe
+
+            content = json.loads(result.content)
+
+            if len(content['value']) == 0:
+                return None
+            else:
+                # Needed? allJson = pd.DataFrame([flatten_json(d) for d in content['value']])
+
+                self.max_records = content.get("@odata.count")
+
+                # print(self.max_records, len(content['value']))
+
+                if self.max_records > len(content['value']):
+                    self.max_pagesize = self.total_count = len(content['value']) 
+                    self.skip_query = content.get("@odata.nextLink").replace("skiptoken=1", "skiptoken={}")
+                    self.page_counter = 0
+
+                    # # executes all chunks
+                    loop = None
+                    while self.total_count < self.max_records:
+                        if loop is None:
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                        else:
+                            loop = asyncio.get_event_loop()
+
+                        future = asyncio.ensure_future(self.run()) #, loop=loop)
+                        loop.run_until_complete(future)
+                    
+                    global jrSet   
+                    global g_jrLs
+                    
+                    for page in self.responses:
+                        json_data = json.loads(page.decode('utf-8'))
+                        jason_data_ls = json_data['value']
+                        print("jason_data_ls: " + str(len(jason_data_ls)))
+                        for jaxStrain in jason_data_ls:
+                            try:
+                                if jaxStrain != None and "MOUSESAMPLE_STRAIN" in jaxStrain:
+                                        g_jrLs.append(jaxStrain["MOUSESAMPLE_STRAIN"]["Barcode"])
+                                        jrSet.add(jaxStrain["MOUSESAMPLE_STRAIN"]["Barcode"])
+                            except Exception:
+                                print(jaxStrain) 
+                                continue
+                        print("set size: " + str(len(jrSet)))       
+                    self.responses = []
+                    
+                with open('non-unique.txt', 'a') as f:
+                    for line in g_jrLs:
+                        f.write(f"{line}\n") 
+                     
+                return  sorted(jrSet)
+
     async def fetch(self, url, session):
         async with session.get(url, retry_attempts=5, retry_for_statuses={401}) as response:            #raise_for_status=True
             # print (url)
@@ -151,10 +283,8 @@ class QueryHandler():
         #async with ClientSession(headers=headers) as session:
                 
             for i in range(self.page_counter, self.page_counter + chunk):
-                # task = (self.fetch(self.skip_query.format(i+1), session))
                 task = asyncio.ensure_future(self.fetch(self.skip_query.format(i+1), session))                
                 tasks.append(task)
-                # print (str(i))
                 
             self.responses.extend(await asyncio.gather(*tasks))
             self.page_counter+=chunk
@@ -164,18 +294,13 @@ class QueryHandler():
         excel_file = IO()
         xlwriter = pd.ExcelWriter(excel_file, engine='xlsxwriter')
         for df in dfList: 
-            #if not df[1].empty:
-            # print(str(df[0][0]))
             df[1].to_excel(xlwriter, str(df[0])[:30])
         xlwriter.save()
         xlwriter.close()
         excel_file.seek(0)  #reset to beginning
-        #with open("/Users/lymanw/projects/mvp/testSite/output.xlsx", "wb") as f:
-        #    f.write(excel_file.getbuffer())
         return excel_file
 
     def get_metadata(self):
-
         return self.runQuery(self.queryBase + "$metadata", result_format='xml')
 
     def get_experiments(self): # putting this here for now so we can get with service account credentials
@@ -200,7 +325,7 @@ class QueryHandler():
 
 class CBAAssayHandler(QueryHandler):
     
-    def __init__(self, cbbList, requestList, templateList, fromDate, toDate, publishedBool, unpublishedBool, inactiveBool, summaryBool, email, password):
+    def __init__(self, cbbList, requestList, templateList, fromDate, toDate, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, email, password):
         QueryHandler.__init__(self, email, password)
 
         # using template_instance as a literal that must be replaced with the actual experiment name before running
@@ -229,6 +354,8 @@ class CBAAssayHandler(QueryHandler):
                              "ENTITY/pfs.MOUSE_SAMPLE_LOT/Active eq True and " \
                              "ENTITY/pfs.MOUSE_SAMPLE_LOT/SAMPLE/pfs.MOUSE_SAMPLE/Active eq True"
 
+        self.jaxstrainFilter = r"ENTITY/pfs.MOUSE_SAMPLE_LOT/SAMPLE/pfs.MOUSE_SAMPLE/MOUSESAMPLE_STRAIN/Barcode eq '{0}'"
+        
         self.cbbList = cbbList
         self.requestList = requestList
         self.template = templateList
@@ -238,6 +365,7 @@ class CBAAssayHandler(QueryHandler):
         self.unpublished = unpublishedBool
         self.inactive = inactiveBool
         self.summary = summaryBool
+        self.jaxstrain = jaxstrain
 
     def getExperimentList(self):   #prepping for just having template
 
@@ -314,6 +442,11 @@ class CBAAssayHandler(QueryHandler):
             # print(queryString)
 
             queryString += self.build_filters(queryString)
+            # For debugging. Remove for release
+            f = open("/tmp/query_string.txt","a")
+            f.write(queryString)
+            f.write("\n")
+            f.close()
 
             # replace placeholder string for template name and run query
             result = self.runQuery(queryString.replace("template_instance", template))
@@ -396,6 +529,15 @@ class CBAAssayHandler(QueryHandler):
                 filters += r"$filter=(" + self.activeFilter  + ")"
                 append = True
 
+        # Do I have the value of jaxstrain at this point?
+        if self.jaxstrain:
+            jaxstrainfilterStr = self.jaxstrainFilter.format(self.jaxstrain)
+            if append:
+                filters += r" and (" + jaxstrainfilterStr + ")" 
+            else:
+                filters += r"$filter=(" + jaxstrainfilterStr + ")"
+                append = True
+                
         return filters
 
     def writeFile(self, dfList):
