@@ -1,0 +1,22 @@
+<tool id="dynamic_options" name="Convert FASTQ to FASTA" version="1.0.0" profile="16.04">
+
+# The keys in the field_components map to the list of field_names in the above element
+# which ensures order for select list options that are built from it.
+MetadataElement(name="field_components", default={}, desc="Field names and components", readonly=True, optional=True, visible=True, no_value={})
+
+<code file="tool_form_utils.py" />
+
+<param name="input" type="data" format="vtkascii,vtkbinary" label="Shape with uncolored surface field">
+    <validator type="expression" message="Shape must have an uncolored surface field.">value is not None and len(value.metadata.field_names) gt 0</validator>
+</param>
+
+<param name="field_name" type="select" label="Field name" refresh_on_change="true">
+    <options>
+        <filter type="data_meta" ref="input" key="field_names"/>
+        <validator type="no_options" message="The selected shape has no uncolored surface fields." />
+    </options>
+</param>
+
+<param name="field_component_index" type="select" label="Field component index" dynamic_options="get_field_components_options(input, field_name=field_name)" help="Color will be applied to the selected field's component associated with this index." />
+
+</tool>

@@ -6,3 +6,11 @@ cba_lists.txt
 cba_lists.txt
 Query-results.json
 Query-results.json
+OM_1747_1-P.TXT
+*.TXT
+cba_lists.txt
+out.csv
+solution.json
+*.json
+__pycache__/galaxy_db.cpython-310.pyc
+*.pyc
