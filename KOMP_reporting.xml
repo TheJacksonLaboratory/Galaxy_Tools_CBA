@@ -1,0 +1,34 @@
+<tool id="KOMP_reporting" name="KOMP PFS Reporting" version="0.0.1">
+    <description>Pull reports from KOMP PFS Core</description>
+    <command interpreter="/projects/galaxy/tools/cba/p3env/bin/python3">
+    KOMP_reporting.py  -r $komp_request -b $komp_batch -e $experiment -f $from_test_date -t $to_test_date -o $options -j $line -u $__user_email__ > $out_file1
+    </command>
+
+
+<code file="komp_form.py" />
+ <inputs>
+    <param format="txt" name="komp_request" multiple="true" value="" type="select" label="KOMP Request" dynamic_options="get_request_fields()"/>
+    <param format="txt" name="komp_batch" multiple="true" value="" type="select" label="KOMP Batch" dynamic_options="get_batch_fields()" />
+    <param format="txt" name="experiment" multiple="true" type="select" value=""  label="Experiment" dynamic_options="get_experiment_fields()" />
+    <param format="txt" name="line" multiple="false" type="select" value=""  label="Line" dynamic_options="get_line_fields()" />
+    <param format="txt" name="from_test_date" type="text" label="From Test Date *05-29-2012" />
+    <param format="txt" name="to_test_date" type="text" label="To Test Date *05-29-2020" />	
+    <param name="options" type="select" label="Get" multiple="true" display="checkboxes">
+		<option value="p">Published:</option>
+		<option value="u">Unpublished:</option>
+		<option value="s">Summary Output:</option>
+		<option value="i">Include Inactive:</option>
+    </param>
+ </inputs>
+<outputs>
+    <data name="out_file1" format="xlsx" metadata_source="input1"/>
+</outputs>
+
+<help>
+
+
+**What it does:**
+This tool pulls reports from PFS Core.
+
+</help>
+</tool>

@@ -152,15 +152,16 @@ def transform_files(file_list, workspace, outputFileName) -> None:
 
     # Write data to the file
     final_data = pd.concat(result, ignore_index=True)
-    
+        
     # Change some column names
     final_data.rename(columns={'ms':'Latency (ms)', 'uV': 'Amplitude (uV)', \
-                                'Animal # ':'LOT BARCODE', 'S':'Stimulation', 'C': 'Channel', \
-                                'Name' : 'Waveform', 'Channels':'Total Channels'}, inplace=True)
+                                'Animal # ':'LOT BARCODE', 'R':'Result', 'S':'Stimulation', 'C': 'Channel', \
+                                'Comment':'Comments','Name' : 'Waveform', 'Channels':'Total Channels'}, inplace=True)
     
     ## Re-sort. Note that dataframes are case sensitive when it comes to sorting.Uppercase comes before lower.
-    sorted_data = final_data.sort_values(by=['LOT BARCODE','Protocol', 'Stimulation', 'Eye','Waveform'],key=lambda col: col.str.lower())
-    sorted_data.to_csv(outputFileName)
+    sorted_data = final_data.sort_values(by=['LOT BARCODE','Protocol', 'Stimulation', 'Eye','Waveform'])
+    #sorted_data = final_data.sort_values(by=['LOT BARCODE','Protocol', 'Stimulation', 'Eye','Waveform'],key=lambda col: col.str.lower())
+    sorted_data.to_csv(outputFileName,sep=',')
 
 
 
@@ -181,7 +182,7 @@ def transform(file_groups: dict, workspace, outputFileName) -> None:
 
     # Write data to the file
     final_data = pd.concat(result, ignore_index=True)
-    final_data.to_csv(outputFileName)
+    final_data.to_csv(outputFileName,sep=',')
 
 
 def isPfile(filename):
@@ -233,10 +234,7 @@ def validateFiles(inputFile1, inputFile2):
     return True
 
 def main():
-    # To rename the columns in a Dataframe:
-    #   df.rename(columns={'oldName1': 'newName1', 'oldName2': 'newName2'}, inplace=True)
-    # To sort by a range of columns:
-    #   df.sort_values(by=['col1', 'col2'])
+
     #Parse the coomand line argument
     #print(sys.argv)
     """
@@ -267,7 +265,7 @@ def main():
     transform(file_groups=file_groups, workspace=workspace, outputFileName=outputFileName)
     """
  
-    """ if len(sys.argv) < 3:
+    if len(sys.argv) < 3:
         print("Usage: inputfile1,inputFile2 outputFile")
         print(len(sys.argv))
         print(sys.argv)
@@ -276,10 +274,8 @@ def main():
 
     #print(sys.argv)
     inputFiles = sys.argv[1].split(',')
-    outputFile = sys.argv[2] """
-    inputFiles = ['1-P.TXT','1-S.TXT','2-P.TXT','2-S.TXT']
-    outputFile = 'out.csv'
-    
+    outputFile = sys.argv[2]
+
     transform_files(inputFiles, '.', outputFile)
 
 if __name__ == "__main__":

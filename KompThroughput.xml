@@ -1,0 +1,17 @@
+<tool id="ThroughPut" name="KOMP Line Throughput Report" version="0.0.1">
+    <description>KOMP Line Throughput Report</description>
+    <command interpreter="/projects/galaxy/tools/cba/p3env/bin/python">
+    KompThroughput.py $out_file2 > $out_file2 
+    </command>
+    <outputs>
+        <data name="out_file2" format="csv"/>
+    </outputs>
+
+    <help>
+
+
+**What it does**
+Produces a report of KOMP lines with respect to number of mice in pipeline.
+
+</help>
+</tool>

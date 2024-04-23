@@ -767,6 +767,13 @@ def meta_column_names():
             "ASSAY_DATA.JAX_GRIP_ASSAY_AVG_ALL_PAWS_QC":"All_Paws_Average_QC",
             "ASSAY_DATA.JAX_ADDITIONAL_GRIP_ATTEMPTS":"Additional_Grip_Attempts",
             "ASSAY_DATA.JAX_GRIP_ASSESSMENT_COMMENT":"Assay_Comments",
+    #NBP - CBA GROOMING ASSAY
+        "ASSAY_DATA.JAX_ASSAY_GRMARENA":"Arena",
+            "ASSAY_DATA.JAX_ASSAY_CENTERPOINTFREQ":"Center-Point_Frequency",
+            "ASSAY_DATA.JAX_ASSAY_BEFOREINDUCECUMULATIVEDUR":"Before-Induce_Cumulative_Duration",
+            "ASSAY_DATA.JAX_ASSAY_BEFOREINDUCEFREQFLOAT":"Before-Induce_Frequency",
+            "ASSAY_DATA.JAX_ASSAY_INDUCEFREQ":"Induce_Frequency",
+            "ASSAY_DATA.JAX_ASSAY_INDUCECUMULATIVEDUR":"Induce_Cumulative_Duration",
     #NBP - CBA LIGHT DARK BOX ASSAY
         "ASSAY_DATA.JAX_ASSAY_LIGHTDARK_CHAMBER":"Chamber",
             "ASSAY_DATA.JAX_ASSAY_LIGHTDARK_RUNGROUP":"Run_Group",
@@ -2436,6 +2443,18 @@ def assay_columns(experiment):
             "ASSAY_DATA.JAX_ASSAY_ASSAYFAILREASON",
             "ASSAY_DATA.JAX_ASSAY_ASSAYFAILCOMMENTS"
             ],
+        "CBA_GROOMING":[
+           "ASSAY_DATA.Barcode",
+           "ASSAY_DATA.JAX_ASSAY_GRMARENA",
+           "ASSAY_DATA.JAX_ASSAY_CENTERPOINTFREQ",
+           "ASSAY_DATA.JAX_ASSAY_BEFOREINDUCECUMULATIVEDUR",
+           "ASSAY_DATA.JAX_ASSAY_BEFOREINDUCEFREQFLOAT",
+           "ASSAY_DATA.JAX_ASSAY_INDUCECUMULATIVEDUR",
+           "ASSAY_DATA.JAX_ASSAY_INDUCEFREQ",           
+           "ASSAY_DATA.JAX_ASSAY_COMMENT",
+           "ASSAY_DATA.JAX_ASSAY_ASSAYFAILREASON",
+           "ASSAY_DATA.JAX_ASSAY_ASSAYFAILCOMMENTS"
+           ],
         "CBA_GROSS_MORPHOLOGY":[
             "ASSAY_DATA.Barcode",
             "ASSAY_DATA.JAX_ASSAY_GROSSMORPH_COMMENT",
