@@ -4,6 +4,7 @@ import json
 import collections
 import pandas as pd
 from io import BytesIO as IO
+import xlsxwriter
 import sys
 import xml.etree.ElementTree as ET
 import cba_assay
@@ -11,6 +12,7 @@ import base64
 import asyncio 
 from aiohttp_retry import RetryClient
 from datetime import datetime
+import configparser  
 
 g_jrLs = []
 
@@ -44,8 +46,22 @@ def flatten_json(y):
 
 class QueryHandler():
     
-    def __init__(self, email, password):
-        self.queryBase = r"https://jacksonlabstest.platformforscience.com/TEST/odata/"
+    def __init__(self, email, password,coreFilter=None):
+        
+        # Get from config file
+        public_config = configparser.ConfigParser()
+        public_config.read("/projects/galaxy/tools/cba/config/setup.cfg")
+        tenant = public_config["CORE LIMS"]["tenant"]
+        print("tenant="+tenant)
+        
+        self.queryBase = tenant
+        print("self.queryBase="+self.queryBase)
+        
+        if coreFilter is None:
+            self.filter = 'CBA' # defaults to CBA but can be overwritten for other experiments and assays
+        else:
+            self.filter = coreFilter
+               
         self.email = email
         self.password = password 
 
@@ -59,7 +75,7 @@ class QueryHandler():
         self.max_records = 0
 
         self.skip_query = ""
-
+    
     def controller(self):
         pass
 
@@ -68,19 +84,18 @@ class QueryHandler():
 
     def runQuery(self, queryString, result_format=None):
         # Note: with async changes, queryString requires $count=true
-        # print(queryString)
-
         my_auth = HTTPBasicAuth(self.email, self.password)
         query = queryString
         # Used for debugging. Remove for release.
+        # DEBUG
         f = open("/tmp/query_string.txt","a")
         f.write(queryString)
         f.write("\n")
         f.close()
+        # End of DEBUG
       
         result = requests.get(query, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=5000"}) #djp 9/27/2023        
 
-        # print(result)
         if result_format == 'xml':
             return result.content
         else: # default format is dataframe
@@ -91,15 +106,10 @@ class QueryHandler():
                 return None
             else:
                 allJson = pd.DataFrame([flatten_json(d) for d in content['value']])
-#                allJson.to_csv('/tmp/allJson.csv',mode='a')
 
                 self.max_records = content.get("@odata.count")
 
-                # print(self.max_records, len(content['value']))
-
                 if self.max_records > len(content['value']):
-
-                    # print(datetime.now())
 
                     self.max_pagesize = self.total_count = len(content['value']) 
                     self.skip_query = content.get("@odata.nextLink").replace("skiptoken=1", "skiptoken={}")
@@ -118,16 +128,16 @@ class QueryHandler():
                         loop.run_until_complete(future)
 
                     for page in self.responses:
-                        # print(page)
                         json_data = json.loads(page.decode('utf-8'))
                         if len(json_data['value']) > 0:
-                            allJson = allJson.append([flatten_json(d) for d in json_data['value']], ignore_index=True, sort=True)
+                            #allJson = allJson.append([flatten_json(d) for d in json_data['value']], ignore_index=True, sort=True)
+                            allJson = pd.concat([allJson,[flatten_json(d) for d in json_data['value']]],axis=0,ignore_index=True, sort=True)
 
                     self.responses = []
 
                 df = pd.DataFrame(allJson)
                 return df
-
+            
     def runLineQuery(self, queryString, result_format=None):
         # Returns a list of JRs
         jrSet = {""}
@@ -137,11 +147,6 @@ class QueryHandler():
     def runLineQueryUniquify(self, queryString, result_format=None):
         # Returns a set of JRs
         
-        now = datetime.now()
-        current_time = now.strftime("%H:%M:%S")
-        print("Current Time =", current_time)
-        print(queryString)
-                
         my_auth = HTTPBasicAuth(self.email, self.password)
         result = requests.get(queryString, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=5000"})     
 
@@ -160,25 +165,14 @@ class QueryHandler():
                     self.skip_query = content.get("@odata.nextLink")
                     self.page_counter = 0  # Needed??
                     
-                global g_jrLs  # For debugging
-                    
                 jason_data_ls = content['value']
-                #print("json_data_ls: " + str(len(jason_data_ls)))
                 for jaxStrain in jason_data_ls:
                     try:
                         if jaxStrain != None and "MOUSESAMPLE_STRAIN" in jaxStrain:
-                            #g_jrLs.append(jaxStrain["MOUSESAMPLE_STRAIN"]["Barcode"])
                             jrSet.add(jaxStrain["MOUSESAMPLE_STRAIN"]["Barcode"])
                     except Exception:
-                                #print(jaxStrain) 
-                                continue
+                                continue  # i.e. ignore...
 
-                print("set size: " + str(len(jrSet))) 
-                print("")
-                """ with open('non-unique.txt', 'a') as f:
-                    for line in g_jrLs:
-                        f.write(f"{line}\n") """ 
-                
                 if self.skip_query:
                     jrSet.update(self.runLineQueryUniquify(self.skip_query, result_format=None))
                 
@@ -196,7 +190,6 @@ class QueryHandler():
         
         result = requests.get(query, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=5000"}) #djp 9/27/2023        
 
-        # print(result)
         if result_format == 'xml':
             return result.content
         else: # default format is dataframe
@@ -209,8 +202,6 @@ class QueryHandler():
                 # Needed? allJson = pd.DataFrame([flatten_json(d) for d in content['value']])
 
                 self.max_records = content.get("@odata.count")
-
-                # print(self.max_records, len(content['value']))
 
                 if self.max_records > len(content['value']):
                     self.max_pagesize = self.total_count = len(content['value']) 
@@ -234,17 +225,15 @@ class QueryHandler():
                     
                     for page in self.responses:
                         json_data = json.loads(page.decode('utf-8'))
-                        jason_data_ls = json_data['value']
-                        print("jason_data_ls: " + str(len(jason_data_ls)))
-                        for jaxStrain in jason_data_ls:
+                        json_data_ls = json_data['value']
+                        for jaxStrain in json_data_ls:
                             try:
                                 if jaxStrain != None and "MOUSESAMPLE_STRAIN" in jaxStrain:
                                         g_jrLs.append(jaxStrain["MOUSESAMPLE_STRAIN"]["Barcode"])
                                         jrSet.add(jaxStrain["MOUSESAMPLE_STRAIN"]["Barcode"])
                             except Exception:
                                 print(jaxStrain) 
-                                continue
-                        print("set size: " + str(len(jrSet)))       
+                                continue   
                     self.responses = []
                     
                 with open('non-unique.txt', 'a') as f:
@@ -255,7 +244,6 @@ class QueryHandler():
 
     async def fetch(self, url, session):
         async with session.get(url, retry_attempts=5, retry_for_statuses={401}) as response:            #raise_for_status=True
-            # print (url)
             return await response.read()
 
     async def run(self):
@@ -276,11 +264,7 @@ class QueryHandler():
         
             chunk_count = self.max_pagesize * chunk        
 
-        # print(self.total_count, self.max_pagesize, chunk)
-
         async with RetryClient(headers=headers, raise_for_status=False) as session:
-        # async with RetryClient(headers=headers, raise_for_status=True) as session:
-        #async with ClientSession(headers=headers) as session:
                 
             for i in range(self.page_counter, self.page_counter + chunk):
                 task = asyncio.ensure_future(self.fetch(self.skip_query.format(i+1), session))                
@@ -318,29 +302,30 @@ class QueryHandler():
                 for entity in list(xml_root.findall('{http://docs.oasis-open.org/odata/ns/edm}EntityType'))
                     if 'BaseType' in entity.attrib 
                         and entity.attrib['BaseType'] == "pfs.EXPERIMENT"
-                        and int(entity.attrib['Name'].find('CBA_',0,4)) == 0]
+                        and int(entity.attrib['Name'].find(self.filter+'_',0,len(self.filter)+1)) == 0]  # Filter on first 4 characters
 
         return experiments
 
 
 class CBAAssayHandler(QueryHandler):
     
-    def __init__(self, cbbList, requestList, templateList, fromDate, toDate, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, email, password):
-        QueryHandler.__init__(self, email, password)
+    def __init__(self, cbbList, requestList, templateList, fromDate, toDate, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, email, password,coreFilter=None):
+        QueryHandler.__init__(self, email, password,coreFilter)
 
         # using template_instance as a literal that must be replaced with the actual experiment name before running
-        self.baseExpansion = "?$count=true&$expand=EXPERIMENT/pfs.template_instance($expand=EXPERIMENT_PROTOCOL,EXPERIMENT_TESTER,EXPERIMENT_ROOM)," \
-                            "ENTITY/pfs.MOUSE_SAMPLE_LOT" \
-                            "($expand=SAMPLE/pfs.MOUSE_SAMPLE($expand=MOUSESAMPLE_STRAIN,MOUSESAMPLE_MOUSE)," \
-                            "MOUSESAMPLELOT_CBABATCH($expand=BATCH_CBAREQUEST))" 
+        # I took out "",EXPERIMENT_ROOM" after  "EXPERIMENT_TESTER" - may need to add it back for CBA
+        self.baseExpansion = r"?$count=true&$expand=EXPERIMENT/pfs.template_instance($expand=EXPERIMENT_PROTOCOL,EXPERIMENT_TESTER)," \
+                            r"ENTITY/pfs.MOUSE_SAMPLE_LOT" \
+                            r"($expand=SAMPLE/pfs.MOUSE_SAMPLE($expand=MOUSESAMPLE_STRAIN,MOUSESAMPLE_MOUSE)," \
+                            r"MOUSESAMPLELOT_{0}BATCH($expand=BATCH_{0}REQUEST))".format(self.filter)
 
         # ASSAY_DATA expand is added later because it depends on experiment name
 
-        self.cbbInitFilter = r"$filter=(ENTITY/pfs.MOUSE_SAMPLE_LOT/MOUSESAMPLELOT_CBABATCH/Barcode eq "
-        self.cbbFilter = r" or ENTITY/pfs.MOUSE_SAMPLE_LOT/MOUSESAMPLELOT_CBABATCH/Barcode eq "
+        self.cbbInitFilter = r"$filter=(ENTITY/pfs.MOUSE_SAMPLE_LOT/MOUSESAMPLELOT_{0}BATCH/Barcode eq ".format(self.filter)
+        self.cbbFilter = r" or ENTITY/pfs.MOUSE_SAMPLE_LOT/MOUSESAMPLELOT_{0}BATCH/Barcode eq ".format(self.filter)
 
-        self.reqInitFilter =r"$filter=(ENTITY/pfs.MOUSE_SAMPLE_LOT/MOUSESAMPLELOT_CBABATCH/BATCH_CBAREQUEST/Barcode eq "
-        self.requestFilter = r" or ENTITY/pfs.MOUSE_SAMPLE_LOT/MOUSESAMPLELOT_CBABATCH/BATCH_CBAREQUEST/Barcode eq "
+        self.reqInitFilter = r"$filter=(ENTITY/pfs.MOUSE_SAMPLE_LOT/MOUSESAMPLELOT_{0}BATCH/BATCH_{0}REQUEST/Barcode eq ".format(self.filter)
+        self.requestFilter = r" or ENTITY/pfs.MOUSE_SAMPLE_LOT/MOUSESAMPLELOT_{0}BATCH/BATCH_{0}REQUEST/Barcode eq ".format(self.filter)
 
         # these are additonal criteria that are added to the request, batch or experiment values
         self.fromdateInitFilter = r"EXPERIMENT/pfs.template_instance/JAX_EXPERIMENT_STARTDATE ge "
@@ -350,9 +335,9 @@ class CBAAssayHandler(QueryHandler):
         self.unpublInitFilter = r"EXPERIMENT/pfs.template_instance/PUBLISHED eq False"
 		
         self.activeFilter = r"Active eq True and " \
-                             "EXPERIMENT/Active eq True and " \
-                             "ENTITY/pfs.MOUSE_SAMPLE_LOT/Active eq True and " \
-                             "ENTITY/pfs.MOUSE_SAMPLE_LOT/SAMPLE/pfs.MOUSE_SAMPLE/Active eq True"
+                             r"EXPERIMENT/Active eq True and " \
+                             r"ENTITY/pfs.MOUSE_SAMPLE_LOT/Active eq True and " \
+                             r"ENTITY/pfs.MOUSE_SAMPLE_LOT/SAMPLE/pfs.MOUSE_SAMPLE/Active eq True"
 
         self.jaxstrainFilter = r"ENTITY/pfs.MOUSE_SAMPLE_LOT/SAMPLE/pfs.MOUSE_SAMPLE/MOUSESAMPLE_STRAIN/Barcode eq '{0}'"
         
@@ -367,35 +352,36 @@ class CBAAssayHandler(QueryHandler):
         self.summary = summaryBool
         self.jaxstrain = jaxstrain
 
+    
     def getExperimentList(self):   #prepping for just having template
-
+        # Retun a list of the experiment names for this request or batch
+        rawExpList = []
+        if len(self.cbbList) <= 0 and len(self.requestList) <= 0 : # Neither batch no request
+            rawExpList
+            
         # noting a bug here to address later - experiments might be different
         # for each item in the list but only getting results for first
-
         if len(self.cbbList) > 0:
-            query = self.queryBase + f"CBA_BATCH('{self.cbbList[0]}')/REV_EXPERIMENT_BATCH_CBA_EXPERIMENT_TRAIT?$count=true"
+            query = self.queryBase + r"{0}_BATCH('{1}')/REV_EXPERIMENT_BATCH_{0}_EXPERIMENT_TRAIT?$count=true".format(self.filter,self.cbbList[0])
         elif len(self.requestList) > 0 :
-            query = self.queryBase + f"CBA_REQUEST('{self.requestList[0]}')/REV_EXPERIMENT_REQUEST_CBA_EXPERIMENT_TRAIT?$count=true"
-        else:
-            return []      
-
-        # print(query)       
+            query = self.queryBase + r"{0}_REQUEST('{1}')/REV_EXPERIMENT_REQUEST_{0}_EXPERIMENT_TRAIT?$count=true".format(self.filter,self.requestList[0])
+        
         df = self.runQuery(query)
-
-        # need to check for case where no experiments
         if df is not None:
-            # get list of unique experiments for the request/batch
             result = df['EntityTypeName'].to_dict()
             rawExpList = {v: None for k, v in result.items()}.keys()
-        else:
-            rawExpList = []
-
-        # print(rawExpList)
+           
+        # DEBUG
+        f = open("/tmp/raw_exp.txt","a")
+        for exp in rawExpList:
+            f.write(exp)
+            f.write("\n")
+        f.close()
+        # End of DEBUG
         
         return rawExpList
 
     def controller(self):
-        # print("controller")
         if len(self.cbbList) > 0 and len(self.template) > 0:   #Covers case of multiple batches and multiple templates
             return self.setUpQuery(self.cbbList, self.cbbInitFilter, self.cbbFilter)
         elif len(self.requestList) > 0 and len(self.template) > 0:
@@ -439,14 +425,13 @@ class CBAAssayHandler(QueryHandler):
 
                 queryString += ")"
 
-            # print(queryString)
-
             queryString += self.build_filters(queryString)
-            # For debugging. Remove for release
+            # DEBUG
             f = open("/tmp/query_string.txt","a")
             f.write(queryString)
             f.write("\n")
             f.close()
+            # End of DEBUG
 
             # replace placeholder string for template name and run query
             result = self.runQuery(queryString.replace("template_instance", template))
@@ -469,7 +454,6 @@ class CBAAssayHandler(QueryHandler):
                 if keep is None:
                     keep = [k for k in dfList[i][1].keys() if (k.find("ASSAY_DATA.") == 0 and k.find("EXPERIMENT_SAMPLE") < 0 and k not in columnList)
                             or (k.find("ASSAY_DATA.EXPERIMENT_SAMPLE") == 0 and k.find("INTERMEDIATE_ASSAY_DATA") >= 0)]
-
                 else:
                     keep = keep + [k for k in dfList[i][1].keys() if k.find("ASSAY_DATA.EXPERIMENT_SAMPLE") == 0 and k.find("INTERMEDIATE_ASSAY_DATA") >= 0]
 
@@ -560,7 +544,8 @@ class CBAAssayHandler(QueryHandler):
                     "$expand=DATA_TYPE/pfs.FLOATING_POINT&" \
                     "$filter=(DATA_TYPE/EntityTypeName eq 'FLOATING_POINT' and DATA_TYPE/pfs.FLOATING_POINT/FORMAT_STRING ne null)"
 
-            df_format = df_format.append(self.runQuery(queryString), ignore_index=True, sort=True)
+            #df_format = df_format.append(self.runQuery(queryString), ignore_index=True, sort=True)
+            df_format = pd.concat([df_format,self.runQuery(queryString)],axis=0,ignore_index=True, sort=True)
 
             # get numeric field attributes with user defined format
             queryString = self.queryBase + f"ENTITY_TYPE('{df[0]}_ASSAY')/TYPE_ATTRIBUTES?$count=true&" \
@@ -568,7 +553,8 @@ class CBAAssayHandler(QueryHandler):
                     "$filter=(DATA_TYPE/EntityTypeName eq 'USER_EQUATION' and DATA_TYPE/pfs.USER_EQUATION/FORMAT_STRING ne null)"
 
             # print(queryString)
-            df_format = df_format.append(self.runQuery(queryString), ignore_index=True, sort=True)
+            #df_format = df_format.append(self.runQuery(queryString), ignore_index=True, sort=True)
+            df_format = pd.concat([df_format,self.runQuery(queryString)],axis=0,ignore_index=True, sort=True)
 
             if df_format.size > 0: # ignore if there are no number formatting results
                 # set format for each EscapedName in the results dataframe
@@ -580,7 +566,7 @@ class CBAAssayHandler(QueryHandler):
                         cell_format = workbook.add_format({'num_format': value})
                         worksheet.set_column(index, index, None, cell_format)
 
-        xlwriter.save()
+        #xlwriter.save()
         xlwriter.close()
         excel_file.seek(0)  #reset to beginning
         return excel_file

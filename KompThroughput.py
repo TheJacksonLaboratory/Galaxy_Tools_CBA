@@ -110,8 +110,6 @@ for entry in entries:
     mouse_info = {}
     for line in lines:
         key, value = line.split(':')
-        #print("key:", key)
-        #print("value:", value)
         mouse_info[key.strip()] = value.strip()
     mouse_data.append(mouse_info)
 
@@ -121,9 +119,9 @@ pfs_data_parsed = pd.DataFrame(mouse_data)
 # Check for duplicates and remove those
 if pfs_data_parsed['Mouse Name'].duplicated().any():
     pfs_data_parsed.drop_duplicates(subset=['Mouse Name'], inplace=True)
-    print("Duplicates have been dropped from the DataFrame.")
-else:
-    print("No duplicates found in the DataFrame.")
+#    print("Duplicates have been dropped from the DataFrame.")
+#else:
+#    print("No duplicates found in the DataFrame.")
 
 # Clean the data table from PFS to match with Lims
 # Drop the column 'Number of experiments' and 'Mouse Name' if it exists
@@ -166,6 +164,9 @@ pfs_data_parsed['ExitReason'] = pfs_data_parsed['ExitReason'].replace({'null': '
 #print(rslims_data_table)
 #print(pfs_data_parsed)
 
+# Export the PFS data to check with the excel export directly from PFS
+#pfs_data_parsed.to_csv("pfs_data_python_04_22.csv", index=False)
+
 # Concatenate the two tables
 # Merge the two tables
 lims_pfs_merge = pd.concat([rslims_data_table, pfs_data_parsed], ignore_index=True)
@@ -175,7 +176,7 @@ lims_pfs_merge = pd.concat([rslims_data_table, pfs_data_parsed], ignore_index=Tr
 lims_pfs_merge['ExitReason'] = lims_pfs_merge['ExitReason'].fillna('None').astype(str)
 
 # Group by and count
-grouped_lims_pfs_df = lims_pfs_merge.groupby(['StockNumber', 'LineName', 'Sex', 'OrganismStatus', 'ExitReason'], as_index=False).size()
+grouped_lims_pfs_df = lims_pfs_merge.groupby(['StockNumber', 'LineName', 'Sex', 'GenotypeSymbol', 'OrganismStatus', 'ExitReason'], as_index=False).size()
 
 # Drop rows for Stock Number 5304
 grouped_lims_pfs_df = grouped_lims_pfs_df[grouped_lims_pfs_df["StockNumber"].str.contains("5304") == False]
@@ -187,10 +188,10 @@ current_datetime = datetime.now()
 date_string = current_datetime.strftime("%Y-%m-%d")
 
 # Define the filename with the current date
-#filename = f'lims_pfs_strain_inprogress_{date_string}.csv'
 filename = sys.argv[1]
+#filename = f'lims_pfs_strain_inprogress_{date_string}.csv'
 
 # Export as a csv file with date
 grouped_lims_pfs_df.to_csv(filename, index=False)
 
-print(f"CSV file '{filename}' has been created.")
+#print(f"CSV file '{filename}' has been created.")

@@ -41,8 +41,8 @@ def main_debug():
     summaryBool = True if opt == 's' else summaryBool
     unpublishedBool = True if opt == 'u' else unpublishedBool
     
-    #batch = 'CBB110'
-    batch = 'KOMPB9'
+    batch = 'CBB110'
+    #batch = 'KOMPB1'
     cbbList = returnList(batch) if batch else []
     #request = 'CBA110'
     request = None

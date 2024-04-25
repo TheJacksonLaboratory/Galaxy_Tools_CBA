@@ -14,3 +14,4 @@ solution.json
 *.json
 __pycache__/galaxy_db.cpython-310.pyc
 *.pyc
+runQuery.py.bak
