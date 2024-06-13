@@ -165,8 +165,8 @@ class QueryHandler():
                     self.skip_query = content.get("@odata.nextLink")
                     self.page_counter = 0  # Needed??
                     
-                jason_data_ls = content['value']
-                for jaxStrain in jason_data_ls:
+                json_data_ls = content['value']
+                for jaxStrain in json_data_ls:
                     try:
                         if jaxStrain != None and "MOUSESAMPLE_STRAIN" in jaxStrain:
                             jrSet.add(jaxStrain["MOUSESAMPLE_STRAIN"]["Barcode"])
