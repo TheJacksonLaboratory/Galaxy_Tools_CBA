@@ -15,3 +15,15 @@ solution.json
 __pycache__/galaxy_db.cpython-310.pyc
 *.pyc
 runQuery.py.bak
+EKG data/1712.csv
+EKG data/1716.csv
+EKG data/1717.csv
+EKG data/1722.csv
+EKG data/1725.csv
+EKG data/B6565.csv
+EKG data/B6566.csv
+EKG data/B6567.csv
+EKG data/B6570.csv
+EKG data/B6571.csv
+EKG data/B6572.csv
+y_maze_data_processing_macro_v5.R.copy
