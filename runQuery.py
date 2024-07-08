@@ -50,12 +50,10 @@ class QueryHandler():
         
         # Get from config file
         public_config = configparser.ConfigParser()
-        public_config.read("/projects/galaxy/tools/cba/config/setup.cfg")
+        public_config.read("./config/setup.cfg")
         tenant = public_config["CORE LIMS"]["tenant"]
-        print("tenant="+tenant)
         
         self.queryBase = tenant
-        print("self.queryBase="+self.queryBase)
         
         if coreFilter is None:
             self.filter = 'CBA' # defaults to CBA but can be overwritten for other experiments and assays
@@ -88,37 +86,38 @@ class QueryHandler():
         query = queryString
         # Used for debugging. Remove for release.
         # DEBUG
-        f = open("/tmp/query_string.txt","a")
+        f = open("./query_string.txt","a")
         f.write(queryString)
         f.write("\n")
         f.close()
         # End of DEBUG
       
-        result = requests.get(query, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=5000"}) #djp 9/27/2023        
+        result = requests.get(query, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=12000"})      
 
         if result_format == 'xml':
-            return result.content
+            return result.content  # We're done. Return what we got
         else: # default format is dataframe
-
-            content = json.loads(result.content)
-
-            if len(content['value']) == 0:
-                return None
+            content = json.loads(result.content)  # Turn result's content into JSON
+            if 'value' in content == False and len(content['value']) == 0:
+                return None  #  Bail. No interesting results, i.e. values
             else:
-                allJson = pd.DataFrame([flatten_json(d) for d in content['value']])
+                valueLs = content['value']
+                num_entities = len(valueLs)
+                valueLs = self.clientsideFilters(valueLs)
+                allJson = pd.DataFrame([flatten_json(d) for d in valueLs])
 
                 self.max_records = content.get("@odata.count")
 
-                if self.max_records > len(content['value']):
+                if self.max_records > num_entities: # If the original number of entities is less than max assume we need to query again
 
-                    self.max_pagesize = self.total_count = len(content['value']) 
+                    self.max_pagesize = self.total_count = len(valueLs) #  Is this correct? I guess so...
                     self.skip_query = content.get("@odata.nextLink").replace("skiptoken=1", "skiptoken={}")
                     self.page_counter = 0
 
                     # # executes all chunks
                     loop = None
                     while self.total_count < self.max_records:
-                        if loop is None:
+                        if loop is None:  # First time
                             loop = asyncio.new_event_loop()
                             asyncio.set_event_loop(loop)
                         else:
@@ -130,11 +129,11 @@ class QueryHandler():
                     for page in self.responses:
                         json_data = json.loads(page.decode('utf-8'))
                         if len(json_data['value']) > 0:
-                            #allJson = allJson.append([flatten_json(d) for d in json_data['value']], ignore_index=True, sort=True)
                             allJson = pd.concat([allJson,[flatten_json(d) for d in json_data['value']]],axis=0,ignore_index=True, sort=True)
 
                     self.responses = []
-
+                    
+                
                 df = pd.DataFrame(allJson)
                 return df
             
@@ -148,7 +147,7 @@ class QueryHandler():
         # Returns a set of JRs
         
         my_auth = HTTPBasicAuth(self.email, self.password)
-        result = requests.get(queryString, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=5000"})     
+        result = requests.get(queryString, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=12000"})     
 
         if result_format == 'xml':   # Never, ever true
             return result.content
@@ -165,8 +164,8 @@ class QueryHandler():
                     self.skip_query = content.get("@odata.nextLink")
                     self.page_counter = 0  # Needed??
                     
-                json_data_ls = content['value']
-                for jaxStrain in json_data_ls:
+                jason_data_ls = content['value']
+                for jaxStrain in jason_data_ls:
                     try:
                         if jaxStrain != None and "MOUSESAMPLE_STRAIN" in jaxStrain:
                             jrSet.add(jaxStrain["MOUSESAMPLE_STRAIN"]["Barcode"])
@@ -188,7 +187,7 @@ class QueryHandler():
         query = queryString
         
         
-        result = requests.get(query, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=5000"}) #djp 9/27/2023        
+        result = requests.get(query, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=12000"}) #djp 9/27/2023        
 
         if result_format == 'xml':
             return result.content
@@ -234,11 +233,8 @@ class QueryHandler():
                             except Exception:
                                 print(jaxStrain) 
                                 continue   
+                                
                     self.responses = []
-                    
-                with open('non-unique.txt', 'a') as f:
-                    for line in g_jrLs:
-                        f.write(f"{line}\n") 
                      
                 return  sorted(jrSet)
 
@@ -343,7 +339,7 @@ class CBAAssayHandler(QueryHandler):
         
         self.cbbList = cbbList
         self.requestList = requestList
-        self.template = templateList
+        self.template = templateList   # Set if the user has specified experiments in the GUI. otherwise we build it from batches or requests
         self.fromdate = fromDate
         self.todate = toDate
         self.published = publishedBool
@@ -353,11 +349,11 @@ class CBAAssayHandler(QueryHandler):
         self.jaxstrain = jaxstrain
 
     
-    def getExperimentList(self):   #prepping for just having template
+    def getExperimentList(self):
         # Retun a list of the experiment names for this request or batch
         rawExpList = []
-        if len(self.cbbList) <= 0 and len(self.requestList) <= 0 : # Neither batch no request
-            rawExpList
+        if len(self.cbbList) <= 0 and len(self.requestList) <= 0 : # Neither batches no requests. Bail.
+            return rawExpList
             
         # noting a bug here to address later - experiments might be different
         # for each item in the list but only getting results for first
@@ -368,39 +364,62 @@ class CBAAssayHandler(QueryHandler):
         
         df = self.runQuery(query)
         if df is not None:
-            result = df['EntityTypeName'].to_dict()
-            rawExpList = {v: None for k, v in result.items()}.keys()
+            if 'EntityTypeName' in df.keys(): # If false then no experiments! Ergo, no data
+                result = df['EntityTypeName'].to_dict()
+                rawExpList = {v: None for k, v in result.items()}.keys()
            
-        # DEBUG
-        f = open("/tmp/raw_exp.txt","a")
-        for exp in rawExpList:
-            f.write(exp)
-            f.write("\n")
-        f.close()
-        # End of DEBUG
-        
         return rawExpList
 
+    # A template is a list of experiment names. 
+    # It comes from either the UI, or a batch barcode or any experiment barcode passed in from the UI.
+    # If the first barcode in the list has no experiments associated with it, we return no results. Is that what we want?
+    """
+    -------------------------------------------------
+    | EXPS  | BATCHES   | REQUEST   | ACTION        
+    -------------------------------------------------
+    |  YES  |  YES      |  YES      |  self.setUpQuery(self.cbbList, ...)
+    -------------------------------------------------
+    |  YES  |           |  YES      |  self.setUpQuery(self.requestList,...)
+    -------------------------------------------------
+    |  YES  |  YES      |           |  self.setUpQuery(self.cbbList,...)
+    -------------------------------------------------
+    |  YES  |           |           |  self.setUpQuery([], "", "")
+    -------------------------------------------------
+    |       |  YES      |  YES      |  self.getExperimentList(); self.setUpQuery(self.cbbList, ...)
+    -------------------------------------------------
+    |       |  YES      |           |  self.getExperimentList(); self.setUpQuery(self.cbbList, ...)
+    -------------------------------------------------
+    |       |           |  YES      |  self.getExperimentList(); self.setUpQuery(self.requestList,...)
+    -------------------------------------------------
+    |       |           |           |  self.setUpQuery([], "", "")
+    -------------------------------------------------
+    """
+
     def controller(self):
+        # User specified BATCHES but no EXPERIMENTS
         if len(self.cbbList) > 0 and len(self.template) > 0:   #Covers case of multiple batches and multiple templates
             return self.setUpQuery(self.cbbList, self.cbbInitFilter, self.cbbFilter)
+        # User specified REQUESTS and no EXPERIMENTS
         elif len(self.requestList) > 0 and len(self.template) > 0:
             return self.setUpQuery(self.requestList, self.reqInitFilter, self.requestFilter)
+        # User specified only EXPERIMENTS
         elif len(self.cbbList) == 0 and len(self.requestList) == 0 and len(self.template) > 0:
             return self.setUpQuery([], "", "")
-        elif len(self.template) == 0 and ((len(self.cbbList) > 0) ^ (len(self.requestList) > 0)): #needs batch XOR request constraint
-            self.template = self.getExperimentList()
+        # User specified no EXPERIMENTS but BATCHES *and* REQUESTS but not both
+        elif len(self.template) == 0 and ((len(self.cbbList) > 0) or (len(self.requestList) > 0)): #needs batch XOR request constraint (why? mmm)
+            self.template = self.getExperimentList()  # BATCHES OR REQS
             if len(self.cbbList) > 0:
                 return self.setUpQuery(self.cbbList, self.cbbInitFilter, self.cbbFilter)
             else:
                 return self.setUpQuery(self.requestList, self.reqInitFilter, self.requestFilter)
         else:
+            # !! Due to XOR above this else clause is taken when we have BATCHES and REQUESTS but no EXPERIMENTS. Is that what we want?
             # edge case but handles no filters
-            # self.template = self.get_experiments()
-
             # returning empty file when no filters for now
             return self.setUpQuery([], "", "")
-    
+            
+            
+#  self.template must have experiments in it at this point
     def setUpQuery(self, entityList, initFilter, filter):
         dfList = []
         for template in self.template:
@@ -426,16 +445,9 @@ class CBAAssayHandler(QueryHandler):
                 queryString += ")"
 
             queryString += self.build_filters(queryString)
-            # DEBUG
-            f = open("/tmp/query_string.txt","a")
-            f.write(queryString)
-            f.write("\n")
-            f.close()
-            # End of DEBUG
-
+            
             # replace placeholder string for template name and run query
             result = self.runQuery(queryString.replace("template_instance", template))
-
             # this line is self documenting :-)
             if result is not None:
                 dfList.append((template.split('_EXPERIMENT')[0], result))
@@ -514,6 +526,7 @@ class CBAAssayHandler(QueryHandler):
                 append = True
 
         # Do I have the value of jaxstrain at this point?
+        """
         if self.jaxstrain:
             jaxstrainfilterStr = self.jaxstrainFilter.format(self.jaxstrain)
             if append:
@@ -521,7 +534,7 @@ class CBAAssayHandler(QueryHandler):
             else:
                 filters += r"$filter=(" + jaxstrainfilterStr + ")"
                 append = True
-                
+        """
         return filters
 
     def writeFile(self, dfList):
@@ -570,3 +583,33 @@ class CBAAssayHandler(QueryHandler):
         xlwriter.close()
         excel_file.seek(0)  #reset to beginning
         return excel_file
+        
+    def clientsideFilters(self, resultList):
+        #f = open("clientsideFilters.txt","a")
+        #f.write("\nself.jaxstrain:" + self.jaxstrain);
+        
+        # If the JAXSTRAIN filter is set remove the non-complying entities.
+        if self.jaxstrain is None or len(self.jaxstrain) == 0 or self.jaxstrain == '':
+            return resultList  # i.e. do nothing
+        
+        if resultList is None or len(resultList) == 0:
+            return resultList # i.e. do nothing
+        
+        #f.write("\nIncoming resultList length:" + str(len(resultList)));
+        
+        # Otherwise remove the entites whose JAXSTRAIN does not match the filter
+        for result in reversed(resultList):
+            if "ASSAY_DATA" in result.keys():
+                d = result["ASSAY_DATA"]
+                if "JAX_ASSAY_STRAINNAME" in d.keys():
+                    if result["ASSAY_DATA"]["JAX_ASSAY_STRAINNAME"] != self.jaxstrain:
+                       #f.write("\nRemoving:" + result["ASSAY_DATA"]["JAX_ASSAY_STRAINNAME"]);
+                        resultList.remove(result)
+                    #else:
+                       #f.write("\nNot removing:" + result["ASSAY_DATA"]["JAX_ASSAY_STRAINNAME"]);
+        
+        #f.write("\nOutgoing resultList length:" + str(len(resultList)));
+        #f.close()
+        
+        return resultList
+        
