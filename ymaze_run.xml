@@ -1,7 +1,7 @@
 <tool id="ymaze" name="ymaze" version="0.0.1">
     <description>CBA Y-MAZE SPONTANEOUS ALTERATION EXPERIMENT</description>
     <command interpreter="Rscript">
-    y_maze_data_processing_macro_v3.R $input1 $out_file1 > $out_file2 
+    y_maze_data_processing_macro_v5.R $input1 $out_file1 > $out_file2 
     </command>
 
     <inputs>
@@ -17,7 +17,7 @@
 
 
 **What it does**
-Y MAZE DATA PROCESSING MACRO v3
+Y MAZE DATA PROCESSING MACRO v5
 
 </help>
 </tool>

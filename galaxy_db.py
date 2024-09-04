@@ -33,27 +33,25 @@ import sys
 
 def getOriginalFilename(uuid):
 
-    con = sqlite3.connect("/projects/galaxy_dev/database/universe.sqlite")
+    con = sqlite3.connect("/projects/galaxy/database/universe.sqlite")
     cur = con.cursor()
 
-    queryStmt = """SELECT 
-        job_parameter.value
+    queryStmt = """ 
+    SELECT history_dataset_association.name
     FROM
-        job
-        INNER JOIN
-        job_parameter ON (job.id = job_parameter.job_id)
-        AND command_line LIKE '%{0}%'
-        AND command_line LIKE '%upload.py%'
-        AND job_parameter.name = 'files';"""
-
-#    print(queryStmt.format(uuid))
+    dataset INNER JOIN history_dataset_association ON (history_dataset_association.dataset_id = dataset.id)
+    WHERE
+    dataset.uuid LIKE '{0}'  
+    """
+    
+    print(queryStmt.format(uuid))
 
     res = cur.execute(queryStmt.format(uuid))
     res.fetchall()
-#    print(len(res.fetchall()))
+    print(len(res.fetchall()))
 
     for row in cur.execute(queryStmt.format(uuid)):
-#        print(row)
+        print(row)
         val = row[0]
         valLs = json.loads(val)
         valDict = valLs[0]
@@ -65,4 +63,16 @@ def main():
     getOriginalFilename(sys.argv[1])
 
 if __name__ == '__main__':
-   main()
+    old = """
+    SELECT 
+        job_parameter.value
+    FROM
+        job
+        INNER JOIN
+        job_parameter ON (job.id = job_parameter.job_id)
+        AND command_line LIKE '%{0}%'
+        AND command_line LIKE '%upload.py%'
+        AND job_parameter.name = 'files';
+        """
+
+    main()

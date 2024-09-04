@@ -1,6 +1,6 @@
 <tool id="KOMP_reporting" name="KOMP PFS Reporting" version="0.0.1">
     <description>Pull reports from KOMP PFS Core</description>
-    <command interpreter="/projects/galaxy/tools/cba/p3env/bin/python3">
+    <command interpreter="/projects/galaxy/tools/cba/p3env/bin/python">
     KOMP_reporting.py  -r $komp_request -b $komp_batch -e $experiment -f $from_test_date -t $to_test_date -o $options -j $line -u $__user_email__ > $out_file1
     </command>
 
@@ -28,7 +28,7 @@
 
 
 **What it does:**
-This tool pulls reports from PFS Core.
+This tool pulls KOMP reports from PFS Core.
 
 </help>
 </tool>

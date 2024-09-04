@@ -11,11 +11,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
 
 public_config = configparser.ConfigParser()
-public_config.read("./config/setup.cfg")
+public_config.read("/projects/galaxy/tools/cba/config/setup.cfg")
 SERVICE_USERNAME = public_config["CORE LIMS"]["service username"]
 
 private_config = configparser.ConfigParser()
-private_config.read("./config/secret.cfg")
+private_config.read("/projects/galaxy/tools/cba/config/secret.cfg")
 SERVICE_PASSWORD = private_config["CORE LIMS"]["service password"]
 
 query = QueryHandler(SERVICE_USERNAME, SERVICE_PASSWORD,'KOMP') # The third param is the service abreviation: CBA, KOMP,...

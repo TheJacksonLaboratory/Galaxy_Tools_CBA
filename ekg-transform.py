@@ -152,7 +152,8 @@ def addDerivedColumns(row,f):
                 isDatFile = 'dat' in  basename(f)
                 s = Path(basename(f)).stem
                 if isDatFile:
-                    row[key] = os.path.splitext(gdb.getOriginalFilename(s))[0]
+                    row[key] = "TODO"
+                    #row[key] = os.path.splitext(gdb.getOriginalFilename(s))[0]
                 else:
                     row[key] = s
         elif key == 'Waveform: Full Trace':
@@ -210,15 +211,16 @@ def parseEkgFile(path):
                 data = f.readlines() # readlines() returns a list of items, each item is a string
             
             if len(data[data_row]):
+                print(data[data_row]) # MMM
                 data_ls = data[data_row].split(',')
                 hdr_ls = data[data_row-1].split(',')
+                
+            # Add derived columns
+            addDerivedColumns(returnRow,basename(path))
                 
             # Build up dictionary for destination 
             for tup in dstSrcColMap:
                 returnRow[tup[0]] = data_ls[hdr_ls.index(tup[1])]
-                
-            # Add derived columns
-            addDerivedColumns(returnRow,basename(path))
         else:
             dumpFailedMessages("File {0} is not valid.".format(path))
     except Exception as e:
@@ -249,13 +251,15 @@ def mainGalaxy():
         # Parse each file into a single CSV string (one per mouse) for the results..
         rowlist = []
         for f in filelist:
+            print("FILE " + f)
             rowlist.append(parseEkgFile(f))
+            print("ROWLIST " + str(rowlist))
             
         
         # Write the header then the data
         if len(rowlist) > 0:
             with open(destPath,'w',newline='') as csvfile:
-                writer = csv.DictWriter(csvfile,fieldnames=rowlist[0].keys(),delimiter='\t')
+                writer = csv.DictWriter(csvfile,fieldnames=rowlist[0].keys(),delimiter=',')
                 writer.writeheader()
                 writer.writerows(rowlist)
         
@@ -283,7 +287,7 @@ def mainStandAlone():
         # Write the header then the data
         if len(rowlist) > 0:
             with open(destPath,'w',newline='') as csvfile:
-                writer = csv.DictWriter(csvfile,fieldnames=rowlist[0].keys(),delimiter='\t')
+                writer = csv.DictWriter(csvfile,fieldnames=rowlist[0].keys(),delimiter=',')
                 writer.writeheader()
                 writer.writerows(rowlist)
         

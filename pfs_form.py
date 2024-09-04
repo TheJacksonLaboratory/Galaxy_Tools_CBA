@@ -1,7 +1,7 @@
 import json
 
 def load_file():
-    with open('/projects/galaxy_dev/tools/cba/cba_lists.txt', 'r') as f:
+    with open('/projects/galaxy/tools/cba/cba_lists.txt', 'r') as f:
         j = json.load(f)
     return j
 

@@ -27,13 +27,12 @@ def main():
     args = parser.parse_args() 
    
     public_config = configparser.ConfigParser()
-    public_config.read("./config/setup.cfg")
+    public_config.read("/projects/galaxy/tools/cba/config/setup.cfg")
     SERVICE_USERNAME = public_config["CORE LIMS"]["service username"]
 
     private_config = configparser.ConfigParser()
-    private_config.read("./config/secret.cfg")
+    private_config.read("/projects/galaxy/tools/cba/config/secret.cfg")
     SERVICE_PASSWORD = private_config["CORE LIMS"]["service password"]
-
 
          
     if not(has_komp_access(args.user, SERVICE_USERNAME, SERVICE_PASSWORD)):

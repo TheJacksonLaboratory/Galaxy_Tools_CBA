@@ -283,7 +283,7 @@ for(a in 1:aa){
       
       if(!is.na(Sequence[length(Sequence)])) 
       {
-	if(entry==Sequence[length(Sequence)])
+	      if(entry==Sequence[length(Sequence)])
         {
          lag<-dat1$Time[i]-dat1$Time[i-1]
          if(lag>1)

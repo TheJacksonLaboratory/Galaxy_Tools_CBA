@@ -1,0 +1,23 @@
+<tool id="VEP" name="VEP Transform" version="0.0.1">
+    <description>CBA VEP Transform</description>
+    <command interpreter="/projects/galaxy/tools/cba/p3env/bin/python">
+    VEP_Transform.py $input1 $out_file1 > $out_file2 
+    </command>
+
+    <inputs>
+        <param name="input1" type="data" multiple="True" label="Select lines from"/>
+    </inputs>
+
+    <outputs>
+        <data name="out_file1" format="csv" label="${tool.name}"/>
+        <data name="out_file2" format="txt"/>
+    </outputs>
+
+    <help>
+
+
+**What it does**
+Combines multiple raw VEP data files
+
+</help>
+</tool>

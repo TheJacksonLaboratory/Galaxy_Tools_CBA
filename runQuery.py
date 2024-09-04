@@ -43,14 +43,18 @@ def flatten_json(y):
     flatten(y) 
     return out 
 
+"""
+CLASS : QueryHandler
 
+"""
 class QueryHandler():
     
     def __init__(self, email, password,coreFilter=None):
         
         # Get from config file
         public_config = configparser.ConfigParser()
-        public_config.read("./config/setup.cfg")
+        # /projects/galaxy/tools/cba
+        public_config.read("/projects/galaxy/tools/cba/config/setup.cfg")
         tenant = public_config["CORE LIMS"]["tenant"]
         
         self.queryBase = tenant
@@ -103,7 +107,6 @@ class QueryHandler():
             else:
                 valueLs = content['value']
                 num_entities = len(valueLs)
-                valueLs = self.clientsideFilters(valueLs)
                 allJson = pd.DataFrame([flatten_json(d) for d in valueLs])
 
                 self.max_records = content.get("@odata.count")
@@ -164,8 +167,8 @@ class QueryHandler():
                     self.skip_query = content.get("@odata.nextLink")
                     self.page_counter = 0  # Needed??
                     
-                jason_data_ls = content['value']
-                for jaxStrain in jason_data_ls:
+                json_data_ls = content['value']
+                for jaxStrain in json_data_ls:
                     try:
                         if jaxStrain != None and "MOUSESAMPLE_STRAIN" in jaxStrain:
                             jrSet.add(jaxStrain["MOUSESAMPLE_STRAIN"]["Barcode"])
@@ -177,66 +180,6 @@ class QueryHandler():
                 
                 return  jrSet
             
-            
-    # Not called. This function has issues. Replaed with a recursive version
-    def runLineQueryAsync(self, queryString, result_format=None):
-        # Note: with async changes, queryString requires $count=true
-        # print(queryString)
-
-        my_auth = HTTPBasicAuth(self.email, self.password)
-        query = queryString
-        
-        
-        result = requests.get(query, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=12000"}) #djp 9/27/2023        
-
-        if result_format == 'xml':
-            return result.content
-        else: # default format is dataframe
-
-            content = json.loads(result.content)
-
-            if len(content['value']) == 0:
-                return None
-            else:
-                # Needed? allJson = pd.DataFrame([flatten_json(d) for d in content['value']])
-
-                self.max_records = content.get("@odata.count")
-
-                if self.max_records > len(content['value']):
-                    self.max_pagesize = self.total_count = len(content['value']) 
-                    self.skip_query = content.get("@odata.nextLink").replace("skiptoken=1", "skiptoken={}")
-                    self.page_counter = 0
-
-                    # # executes all chunks
-                    loop = None
-                    while self.total_count < self.max_records:
-                        if loop is None:
-                            loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(loop)
-                        else:
-                            loop = asyncio.get_event_loop()
-
-                        future = asyncio.ensure_future(self.run()) #, loop=loop)
-                        loop.run_until_complete(future)
-                    
-                    global jrSet   
-                    global g_jrLs
-                    
-                    for page in self.responses:
-                        json_data = json.loads(page.decode('utf-8'))
-                        json_data_ls = json_data['value']
-                        for jaxStrain in json_data_ls:
-                            try:
-                                if jaxStrain != None and "MOUSESAMPLE_STRAIN" in jaxStrain:
-                                        g_jrLs.append(jaxStrain["MOUSESAMPLE_STRAIN"]["Barcode"])
-                                        jrSet.add(jaxStrain["MOUSESAMPLE_STRAIN"]["Barcode"])
-                            except Exception:
-                                print(jaxStrain) 
-                                continue   
-                                
-                    self.responses = []
-                     
-                return  sorted(jrSet)
 
     async def fetch(self, url, session):
         async with session.get(url, retry_attempts=5, retry_for_statuses={401}) as response:            #raise_for_status=True
@@ -252,12 +195,9 @@ class QueryHandler():
 
         # adjust for partial page (fewer than max page size) at end
         if self.total_count + self.max_pagesize * chunk > self.max_records:
-
             chunk_count = self.max_records - self.total_count
             chunk = int((self.max_records - self.total_count) / self.max_pagesize + 1)
-
         else:
-        
             chunk_count = self.max_pagesize * chunk        
 
         async with RetryClient(headers=headers, raise_for_status=False) as session:
@@ -301,8 +241,15 @@ class QueryHandler():
                         and int(entity.attrib['Name'].find(self.filter+'_',0,len(self.filter)+1)) == 0]  # Filter on first 4 characters
 
         return experiments
+    
+    
+    
 
+"""
 
+CLASS : CBAAssayHandler
+
+"""
 class CBAAssayHandler(QueryHandler):
     
     def __init__(self, cbbList, requestList, templateList, fromDate, toDate, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, email, password,coreFilter=None):
@@ -478,8 +425,8 @@ class CBAAssayHandler(QueryHandler):
                 # update to preferred names
                 df.rename(columns=cba_assay.meta_column_names(), inplace=True)
                 dfList[i] = (dfList[i][0], df)
-
-        return dfList
+                
+        return self.clientsideFilters(dfList)
 
     def build_filters(self, query):
         # build query filter from form inputs
@@ -557,7 +504,6 @@ class CBAAssayHandler(QueryHandler):
                     "$expand=DATA_TYPE/pfs.FLOATING_POINT&" \
                     "$filter=(DATA_TYPE/EntityTypeName eq 'FLOATING_POINT' and DATA_TYPE/pfs.FLOATING_POINT/FORMAT_STRING ne null)"
 
-            #df_format = df_format.append(self.runQuery(queryString), ignore_index=True, sort=True)
             df_format = pd.concat([df_format,self.runQuery(queryString)],axis=0,ignore_index=True, sort=True)
 
             # get numeric field attributes with user defined format
@@ -565,8 +511,6 @@ class CBAAssayHandler(QueryHandler):
                     "$expand=DATA_TYPE/pfs.USER_EQUATION&" \
                     "$filter=(DATA_TYPE/EntityTypeName eq 'USER_EQUATION' and DATA_TYPE/pfs.USER_EQUATION/FORMAT_STRING ne null)"
 
-            # print(queryString)
-            #df_format = df_format.append(self.runQuery(queryString), ignore_index=True, sort=True)
             df_format = pd.concat([df_format,self.runQuery(queryString)],axis=0,ignore_index=True, sort=True)
 
             if df_format.size > 0: # ignore if there are no number formatting results
@@ -584,32 +528,29 @@ class CBAAssayHandler(QueryHandler):
         excel_file.seek(0)  #reset to beginning
         return excel_file
         
-    def clientsideFilters(self, resultList):
-        #f = open("clientsideFilters.txt","a")
-        #f.write("\nself.jaxstrain:" + self.jaxstrain);
         
-        # If the JAXSTRAIN filter is set remove the non-complying entities.
-        if self.jaxstrain is None or len(self.jaxstrain) == 0 or self.jaxstrain == '':
-            return resultList  # i.e. do nothing
-        
-        if resultList is None or len(resultList) == 0:
-            return resultList # i.e. do nothing
-        
-        #f.write("\nIncoming resultList length:" + str(len(resultList)));
-        
-        # Otherwise remove the entites whose JAXSTRAIN does not match the filter
-        for result in reversed(resultList):
-            if "ASSAY_DATA" in result.keys():
-                d = result["ASSAY_DATA"]
-                if "JAX_ASSAY_STRAINNAME" in d.keys():
-                    if result["ASSAY_DATA"]["JAX_ASSAY_STRAINNAME"] != self.jaxstrain:
-                       #f.write("\nRemoving:" + result["ASSAY_DATA"]["JAX_ASSAY_STRAINNAME"]);
-                        resultList.remove(result)
-                    #else:
-                       #f.write("\nNot removing:" + result["ASSAY_DATA"]["JAX_ASSAY_STRAINNAME"]);
-        
-        #f.write("\nOutgoing resultList length:" + str(len(resultList)));
-        #f.close()
-        
-        return resultList
-        
+    # This function removes all the rowms where the strain does not atch the jaxstrain filter if present
+    # resultDataFrameLs is actually a list of tuples. 
+    # The first element is the name of the experiment and the second is the dataframe.
+    def clientsideFilters(self, resultDataFrameLs):  
+        try:
+            # If the JAXSTRAIN filter is set remove the non-complying entities.
+            if self.jaxstrain is None or len(self.jaxstrain) == 0 or self.jaxstrain == '':
+                return resultDataFrameLs  # i.e. do nothing
+            
+            if resultDataFrameLs is None or len(resultDataFrameLs) == 0:
+                return resultDataFrameLs # i.e. do nothing
+                
+            for i in range(0,len(resultDataFrameLs)):
+                a,df = resultDataFrameLs[i]
+                # df is a Dataframe. Remove all the rows from b where b.Strain <> self.jaxstrain
+                df = df[df.Strain == self.jaxstrain]
+                resultDataFrameLs[i] = (a,df)
+                
+            
+        except Exception as e:
+            print("\nException occurred:" + repr(e))
+        finally:
+            return resultDataFrameLs
+               
+    
