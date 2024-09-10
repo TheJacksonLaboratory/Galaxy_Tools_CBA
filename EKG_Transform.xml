@@ -1,7 +1,7 @@
-<tool id="ERG" name="ERG Transform" version="0.0.1">
-    <description>CBA ERG Transform</description>
+<tool id="EKG" name="EKG Transform" version="0.0.1">
+    <description>CBA EKG Transform</description>
     <command interpreter="/projects/galaxy/tools/cba/p3env/bin/python">
-    ERG_Transform.py $input1 $out_file1 > $out_file2 
+    EKG_Transform.py $input1 $out_file1 > $out_file2 
     </command>
 
     <inputs>
@@ -17,7 +17,7 @@
 
 
 **What it does**
-Combines multiple raw ERG data files
+Combines multiple raw EKG data files
 
 </help>
 </tool>
