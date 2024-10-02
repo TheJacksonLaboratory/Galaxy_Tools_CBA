@@ -65,17 +65,17 @@ def parse_file(filename, workspace):
     with open(filename, "r", encoding='utf-8',
               errors='ignore') as f:
         lines = f.readlines()
-        columns = lines[17].strip().split() 
+        columns = lines[16].strip().split() 
 
         # Reformat the column name of 'Cage #'
         columns.remove('#')
         columns[1] = 'Mouse Name'
         columns[2] = 'Cage #'
 
-        num_rows = len(lines[18:34])
+        num_rows = len(lines[17:33])
         first_five_cols = get_first_five_cols(lines, num_rows)
         # get data in marker's table section
-        temp = strip_lines(lines[18:34])
+        temp = strip_lines(lines[17:33])
         marker_table_data = pd.DataFrame.from_records(temp, columns=columns)
         res = pd.concat([first_five_cols, marker_table_data], axis=1)
         return res
@@ -101,6 +101,7 @@ def transform_files(file_list, workspace, outputFileName) -> None:
     ## Re-sort. Note that dataframes are case sensitive when it comes to sorting.Uppercase comes before lower.
     sorted_data = final_data.sort_values(by=['LOT BARCODE','Protocol', 'Stimulation', 'Eye','Waveform'])
     #sorted_data = final_data.sort_values(by=['LOT BARCODE','Protocol', 'Stimulation', 'Eye','Waveform'],key=lambda col: col.str.lower())
+    sorted_data = sorted_data[sorted_data['Waveform'].isin(['P1','N1','P2'])]        
     sorted_data.to_csv(outputFileName,sep=',')
 
 
@@ -118,14 +119,16 @@ def validateFiles(inputFile1):
     return True
 
 def main():
-
+    """
     if len(sys.argv) < 3:
         print("Usage: python VEP_Transform.py inputfile1,...inputFileN outputFile")
         exit()
 
     inputFiles = sys.argv[1].split(',')
     outputFile = sys.argv[2]
-
+    """
+    inputFiles = ['1_rev1.TXT'] 
+    outputFile = 'VEP2.csv'
     transform_files(inputFiles, '.', outputFile)
 
 if __name__ == "__main__":

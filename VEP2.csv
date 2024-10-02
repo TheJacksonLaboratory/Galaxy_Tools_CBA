@@ -1,0 +1,7 @@
+,Protocol,Steps,Total Channels,LOT BARCODE,Study Name,Group,Mouse Name,Cage #,Age,Date,Comments,Stimulation,Channel,Result,Eye,Waveform,Amplitude (uV),Latency (ms)
+14,Simultaneous ERG and VEP Test [14804-E || ECN 1520 || 22 July 2020],1,6,1,CASE_LC-245_C1TP1,0,CASE_LC-245_C1TP1 1,CGE12054,2 Months,6/5/2023,,1,6,1,LE,N1,-5.339,37.5
+13,Simultaneous ERG and VEP Test [14804-E || ECN 1520 || 22 July 2020],1,6,1,CASE_LC-245_C1TP1,0,CASE_LC-245_C1TP1 1,CGE12054,2 Months,6/5/2023,,1,6,1,LE,P1,14.17,24.5
+15,Simultaneous ERG and VEP Test [14804-E || ECN 1520 || 22 July 2020],1,6,1,CASE_LC-245_C1TP1,0,CASE_LC-245_C1TP1 1,CGE12054,2 Months,6/5/2023,,1,6,1,LE,P2,23.87,79.5
+11,Simultaneous ERG and VEP Test [14804-E || ECN 1520 || 22 July 2020],1,6,1,CASE_LC-245_C1TP1,0,CASE_LC-245_C1TP1 1,CGE12054,2 Months,6/5/2023,,1,5,1,RE,N1,-8.252,48
+10,Simultaneous ERG and VEP Test [14804-E || ECN 1520 || 22 July 2020],1,6,1,CASE_LC-245_C1TP1,0,CASE_LC-245_C1TP1 1,CGE12054,2 Months,6/5/2023,,1,5,1,RE,P1,22.24,25
+12,Simultaneous ERG and VEP Test [14804-E || ECN 1520 || 22 July 2020],1,6,1,CASE_LC-245_C1TP1,0,CASE_LC-245_C1TP1 1,CGE12054,2 Months,6/5/2023,,1,5,1,RE,P2,28.54,95.5
