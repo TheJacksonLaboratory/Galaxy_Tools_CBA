@@ -67,7 +67,6 @@ def parse_file(filename, workspace):
               errors='ignore') as f:
         lines = f.readlines()
         columns = lines[16].strip().split() 
-        print(columns)  
         # Reformat the column name of 'Cage #'
         if '#' in columns:
             columns.remove('#')

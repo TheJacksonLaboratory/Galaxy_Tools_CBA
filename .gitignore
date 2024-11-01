@@ -27,3 +27,5 @@ EKG data/B6570.csv
 EKG data/B6571.csv
 EKG data/B6572.csv
 y_maze_data_processing_macro_v5.R.copy
+output.csv
+*.csv
