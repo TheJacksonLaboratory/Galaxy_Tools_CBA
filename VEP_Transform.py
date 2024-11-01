@@ -53,6 +53,7 @@ def get_first_five_cols(lines, num_rows: int):
     d[channel[0]].extend([channel[1]] * num_rows)
     d[animal_number[0]].extend([animal_number[1]] * num_rows)
     d[study_name[0]].extend([study_name[1]] * num_rows)
+    
     df = pd.DataFrame.from_dict(d)
 
     return df
@@ -66,9 +67,10 @@ def parse_file(filename, workspace):
               errors='ignore') as f:
         lines = f.readlines()
         columns = lines[16].strip().split() 
-
+        print(columns)  
         # Reformat the column name of 'Cage #'
-        columns.remove('#')
+        if '#' in columns:
+            columns.remove('#')
         columns[1] = 'Mouse Name'
         columns[2] = 'Cage #'
 
@@ -92,16 +94,26 @@ def transform_files(file_list, workspace, outputFileName) -> None:
 
     # Write data to the file
     final_data = pd.concat(result, ignore_index=True)
-        
+    # delete columns that are not wanted
+    final_data.drop('Animal # ', axis=1, inplace=True)
+    final_data.drop('Cage #', axis=1, inplace=True)
+    final_data.drop('Age', axis=1, inplace=True)
+    
+    final_data.rename(columns={'ms':'Latency (ms)', 'uV': 'Amplitude (uV)', \
+                                'R':'Result', 'S':'Stimulation', 'C': 'Channel', \
+                                'Comment':'Comments','Name' : 'Waveform', 'Channels':'Total Channels'}, inplace=True)
     # Change some column names
+    """
     final_data.rename(columns={'ms':'Latency (ms)', 'uV': 'Amplitude (uV)', \
                                 'Animal # ':'LOT BARCODE', 'R':'Result', 'S':'Stimulation', 'C': 'Channel', \
                                 'Comment':'Comments','Name' : 'Waveform', 'Channels':'Total Channels'}, inplace=True)
+    """
     
     ## Re-sort. Note that dataframes are case sensitive when it comes to sorting.Uppercase comes before lower.
-    sorted_data = final_data.sort_values(by=['LOT BARCODE','Protocol', 'Stimulation', 'Eye','Waveform'])
-    #sorted_data = final_data.sort_values(by=['LOT BARCODE','Protocol', 'Stimulation', 'Eye','Waveform'],key=lambda col: col.str.lower())
-    sorted_data = sorted_data[sorted_data['Waveform'].isin(['P1','N1','P2'])]        
+    #sorted_data = final_data.sort_values(by=['LOT BARCODE','Protocol', 'Stimulation', 'Eye','Waveform'])
+    sorted_data = final_data.sort_values(by=['Protocol', 'Stimulation', 'Eye','Waveform'])
+    sorted_data = sorted_data[sorted_data['Waveform'].isin(['P1','N1','P2'])]
+    
     sorted_data.to_csv(outputFileName,sep=',')
 
 
@@ -119,16 +131,14 @@ def validateFiles(inputFile1):
     return True
 
 def main():
-    """
+
     if len(sys.argv) < 3:
         print("Usage: python VEP_Transform.py inputfile1,...inputFileN outputFile")
         exit()
 
     inputFiles = sys.argv[1].split(',')
     outputFile = sys.argv[2]
-    """
-    inputFiles = ['1_rev1.TXT'] 
-    outputFile = 'VEP2.csv'
+
     transform_files(inputFiles, '.', outputFile)
 
 if __name__ == "__main__":
