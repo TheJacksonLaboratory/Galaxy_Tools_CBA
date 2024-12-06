@@ -152,15 +152,22 @@ def transform_files(file_list, workspace, outputFileName) -> None:
 
     # Write data to the file
     final_data = pd.concat(result, ignore_index=True)
-        
+    
+    final_data.drop('Animal # ', axis=1, inplace=True)
+    final_data.drop('Cage #', axis=1, inplace=True)
+    final_data.drop('Age', axis=1, inplace=True)
+    final_data.drop('Comment', axis=1, inplace=True)
+    final_data.drop('C', axis=1, inplace=True)
+    final_data.drop('Group', axis=1, inplace=True)
+      
     # Change some column names
     final_data.rename(columns={'ms':'Latency (ms)', 'uV': 'Amplitude (uV)', \
-                                'Animal # ':'LOT BARCODE', 'R':'Result', 'S':'Stimulation', 'C': 'Channel', \
-                                'Comment':'Comments','Name' : 'Waveform', 'Channels':'Total Channels'}, inplace=True)
+                             'R':'Result', 'S':'Stimulation', \
+                            'Name' : 'Waveform', 'Channels':'Total Channels'}, inplace=True)
     
     ## Re-sort. Note that dataframes are case sensitive when it comes to sorting.Uppercase comes before lower.
-    sorted_data = final_data.sort_values(by=['LOT BARCODE','Protocol', 'Stimulation', 'Eye','Waveform'])
-    #sorted_data = final_data.sort_values(by=['LOT BARCODE','Protocol', 'Stimulation', 'Eye','Waveform'],key=lambda col: col.str.lower())
+    #sorted_data = final_data.sort_values(by=['LOT BARCODE','Protocol', 'Stimulation', 'Waveform','Eye'])
+    sorted_data = final_data.sort_values(by=['Mouse Name','Protocol', 'Stimulation','Waveform', 'Eye'])
     sorted_data.to_csv(outputFileName,sep=',')
 
 

@@ -97,20 +97,18 @@ def transform_files(file_list, workspace, outputFileName) -> None:
     final_data.drop('Animal # ', axis=1, inplace=True)
     final_data.drop('Cage #', axis=1, inplace=True)
     final_data.drop('Age', axis=1, inplace=True)
+    final_data.drop('Comment', axis=1, inplace=True)
+    final_data.drop('C', axis=1, inplace=True)
+    final_data.drop('Group', axis=1, inplace=True)
     
-    final_data.rename(columns={'ms':'Latency (ms)', 'uV': 'Amplitude (uV)', \
-                                'R':'Result', 'S':'Stimulation', 'C': 'Channel', \
-                                'Comment':'Comments','Name' : 'Waveform', 'Channels':'Total Channels'}, inplace=True)
     # Change some column names
-    """
     final_data.rename(columns={'ms':'Latency (ms)', 'uV': 'Amplitude (uV)', \
-                                'Animal # ':'LOT BARCODE', 'R':'Result', 'S':'Stimulation', 'C': 'Channel', \
-                                'Comment':'Comments','Name' : 'Waveform', 'Channels':'Total Channels'}, inplace=True)
-    """
-    
+                                'R':'Result', 'S':'Stimulation', \
+                                'Name' : 'Waveform', 'Channels':'Total Channels'}, inplace=True)
+   
     ## Re-sort. Note that dataframes are case sensitive when it comes to sorting.Uppercase comes before lower.
-    #sorted_data = final_data.sort_values(by=['LOT BARCODE','Protocol', 'Stimulation', 'Eye','Waveform'])
-    sorted_data = final_data.sort_values(by=['Protocol', 'Stimulation', 'Eye','Waveform'])
+    #sorted_data = final_data.sort_values(by=['Protocol', 'Stimulation', 'Eye','Waveform'])
+    sorted_data = final_data.sort_values(by=['Mouse Name','Waveform','Eye'])
     sorted_data = sorted_data[sorted_data['Waveform'].isin(['P1','N1','P2'])]
     
     sorted_data.to_csv(outputFileName,sep=',')
