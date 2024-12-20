@@ -1,0 +1,9 @@
+corepfs_database:
+ baseURL: https://jacksonlabs.platformforscience.com/PROD/odata/
+ mouseEndpoint: KOMP_REQUEST?$expand=REV_MOUSESAMPLELOT_KOMPREQUEST($expand=SAMPLE/pfs.MOUSE_SAMPLE)&$count=true
+ experimentEndpointTemplate: KOMP_{exp}_EXPERIMENT?$filter= JAX_EXPERIMENT_STATUS eq 'Review Completed'&$expand=EXPERIMENT_SAMPLES($expand=ASSAY_DATA/pfs.KOMP_{exp}_ASSAY_DATA,ENTITY/pfs.MOUSE_SAMPLE_LOT($expand=SAMPLE/pfs.MOUSE_SAMPLE))
+ username: svc-corePFS@jax.org
+ password: hRbP&6K&(Qvw
+ 
+ toFilterOnDate:
+    https://jacksonlabs.platformforscience.com/PROD/odata/KOMP_BODY_COMPOSITION_EXPERIMENT?$filter= JAX_EXPERIMENT_STATUS eq 'Review Completed' and Modified gt 2024-08-01T23:59:59.997Z&$expand=EXPERIMENT_SAMPLES($expand=ASSAY_DATA/pfs.KOMP_BODY_COMPOSITION_ASSAY_DATA,ENTITY/pfs.MOUSE_SAMPLE_LOT($expand=SAMPLE/pfs.MOUSE_SAMPLE))
