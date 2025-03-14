@@ -54,7 +54,7 @@ class QueryHandler():
         # Get from config file
         public_config = configparser.ConfigParser()
         # /projects/galaxy/tools/cba
-        public_config.read("/projects/galaxy/tools/cba/config/setup.cfg")
+        public_config.read("./config/setup.cfg")
         tenant = public_config["CORE LIMS"]["tenant"]
         
         self.queryBase = tenant
@@ -88,57 +88,55 @@ class QueryHandler():
         # Note: with async changes, queryString requires $count=true
         my_auth = HTTPBasicAuth(self.email, self.password)
         query = queryString
-        # Used for debugging. Remove for release.
-        # DEBUG
-        f = open("./query_string.txt","a")
-        f.write(queryString)
-        f.write("\n")
-        f.close()
-        # End of DEBUG
-      
-        result = requests.get(query, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=12000"})      
+        df = None
+        try:
+            result = requests.get(query, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=12000"})      
 
-        if result_format == 'xml':
-            return result.content  # We're done. Return what we got
-        else: # default format is dataframe
-            content = json.loads(result.content)  # Turn result's content into JSON
-            if 'value' in content == False and len(content['value']) == 0:
-                return None  #  Bail. No interesting results, i.e. values
-            else:
-                valueLs = content['value']
-                num_entities = len(valueLs)
-                allJson = pd.DataFrame([flatten_json(d) for d in valueLs])
+            if result_format == 'xml':
+                return result.content  # We're done. Return what we got
+            else: # default format is dataframe
+                content = json.loads(result.content)  # Turn result's content into JSON
+                if 'value' in content == False:
+                    return None  #  Bail. No interesting results, i.e. values
+                elif len(content['value']) == 0:
+                    return None
+                else:
+                    valueLs = content['value']
+                    num_entities = len(valueLs)
+                    allJson = pd.DataFrame([flatten_json(d) for d in valueLs])
 
-                self.max_records = content.get("@odata.count")
+                    self.max_records = content.get("@odata.count")
 
-                if self.max_records > num_entities: # If the original number of entities is less than max assume we need to query again
+                    if self.max_records > num_entities: # If the original number of entities is less than max assume we need to query again
 
-                    self.max_pagesize = self.total_count = len(valueLs) #  Is this correct? I guess so...
-                    self.skip_query = content.get("@odata.nextLink").replace("skiptoken=1", "skiptoken={}")
-                    self.page_counter = 0
+                        self.max_pagesize = self.total_count = len(valueLs) #  Is this correct? I guess so...
+                        self.skip_query = content.get("@odata.nextLink").replace("skiptoken=1", "skiptoken={}")
+                        self.page_counter = 0
 
-                    # # executes all chunks
-                    loop = None
-                    while self.total_count < self.max_records:
-                        if loop is None:  # First time
-                            loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(loop)
-                        else:
-                            loop = asyncio.get_event_loop()
+                        # # executes all chunks
+                        loop = None
+                        while self.total_count < self.max_records:
+                            if loop is None:  # First time
+                                loop = asyncio.new_event_loop()
+                                asyncio.set_event_loop(loop)
+                            else:
+                                loop = asyncio.get_event_loop()
 
-                        future = asyncio.ensure_future(self.run()) #, loop=loop)
-                        loop.run_until_complete(future)
+                            future = asyncio.ensure_future(self.run()) #, loop=loop)
+                            loop.run_until_complete(future)
 
-                    for page in self.responses:
-                        json_data = json.loads(page.decode('utf-8'))
-                        if len(json_data['value']) > 0:
-                            allJson = pd.concat([allJson,[flatten_json(d) for d in json_data['value']]],axis=0,ignore_index=True, sort=True)
+                        for page in self.responses:
+                            json_data = json.loads(page.decode('utf-8'))
+                            if len(json_data['value']) > 0:
+                                allJson = pd.concat([allJson,[flatten_json(d) for d in json_data['value']]],axis=0,ignore_index=True, sort=True)
 
-                    self.responses = []
-                    
-                
-                df = pd.DataFrame(allJson)
-                return df
+                        self.responses = []
+                    df = pd.DataFrame(allJson)
+                    return df
+        except Exception as e:
+            print("\nException occurred:" + repr(e) + " QUERY: " + query)
+            return None
+
             
     def runLineQuery(self, queryString, result_format=None):
         # Returns a list of JRs
@@ -554,3 +552,116 @@ class CBAAssayHandler(QueryHandler):
             return resultDataFrameLs
                
     
+"""
+
+CLASS : CBABatchBarcodeRequestHandler
+
+"""
+class CBABatchBarcodeRequestHandler(QueryHandler):
+    
+    def __init__(self, cbbList, requestList, templateList, fromDate, toDate, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, email, password,coreFilter=None):
+        QueryHandler.__init__(self, email, password,coreFilter)
+
+        # Currenty getting all the batches for a particular experiment. We may narrow the list down later
+        # templateList is a list of experiment names, e.g. CBA_BODY_WEIGHT_EXPERIMENT
+        self.baseExpansion = "CBA_BATCH?$expand=REV_EXPERIMENT_BATCH_template_instance&$select=Barcode&$count=true"
+
+       
+        # NOTE - THE FOLLOWING FILTERS ARE NOT CURRENTLY USED IN THIS CLASS BUT LEFT HERE IN CASE THAT CHANGES
+        self.cbbInitFilter = r"$filter=(ENTITY/pfs.MOUSE_SAMPLE_LOT/MOUSESAMPLELOT_{0}BATCH/Barcode eq ".format(self.filter)
+        self.cbbFilter = r" or ENTITY/pfs.MOUSE_SAMPLE_LOT/MOUSESAMPLELOT_{0}BATCH/Barcode eq ".format(self.filter)
+
+        self.reqInitFilter = r"$filter=(ENTITY/pfs.MOUSE_SAMPLE_LOT/MOUSESAMPLELOT_{0}BATCH/BATCH_{0}REQUEST/Barcode eq ".format(self.filter)
+        self.requestFilter = r" or ENTITY/pfs.MOUSE_SAMPLE_LOT/MOUSESAMPLELOT_{0}BATCH/BATCH_{0}REQUEST/Barcode eq ".format(self.filter)
+
+        # these are additonal criteria that are added to the request, batch or experiment values
+        self.fromdateInitFilter = r"EXPERIMENT/pfs.template_instance/JAX_EXPERIMENT_STARTDATE ge "
+        self.todateInitFilter = r"EXPERIMENT/pfs.template_instance/JAX_EXPERIMENT_STARTDATE le "
+		
+        self.publInitFilter = r"EXPERIMENT/pfs.template_instance/PUBLISHED eq True"
+        self.unpublInitFilter = r"EXPERIMENT/pfs.template_instance/PUBLISHED eq False"
+		
+        self.activeFilter = r"Active eq True and " \
+                             r"EXPERIMENT/Active eq True and " \
+                             r"ENTITY/pfs.MOUSE_SAMPLE_LOT/Active eq True and " \
+                             r"ENTITY/pfs.MOUSE_SAMPLE_LOT/SAMPLE/pfs.MOUSE_SAMPLE/Active eq True"
+
+        self.jaxstrainFilter = r"ENTITY/pfs.MOUSE_SAMPLE_LOT/SAMPLE/pfs.MOUSE_SAMPLE/MOUSESAMPLE_STRAIN/Barcode eq '{0}'"
+        
+        self.cbbList = cbbList
+        self.requestList = requestList
+        self.template = templateList   # Only one used at this point
+        self.fromdate = fromDate
+        self.todate = toDate
+        self.published = publishedBool
+        self.unpublished = unpublishedBool
+        self.inactive = inactiveBool
+        self.summary = summaryBool
+        self.jaxstrain = jaxstrain
+
+    
+    # This function does the work setting up the query and calling PFS
+    def controller(self):
+        # User specified EXPERIMENTS
+        return self.setUpQuery([], "", "")
+        
+            
+#  self.template must have experiments in it at this point
+    def setUpQuery(self, entityList, initFilter, filter):
+        dfList = []
+        for template in self.template:  # self.template is a list of experiment names, e.g. CBA_BODY_WEIGHT_EXPERIMENT
+            baseExpansion = self.baseExpansion.replace("template_instance", template) # For batches query this is all we need
+            queryString = self.queryBase + baseExpansion 
+            result = self.runQuery(queryString)
+            if result is not None:
+                dfList.append(result)
+
+        
+        return dfList
+
+    # Currently we are not filtering for BATCHES. That may change.
+    def build_filters(self, query):
+        # build query filter from form inputs
+        filters = ""
+
+        append = "$filter" in query
+
+        # User can request published AND unpublished, published OR unpublished, or NEITHER
+        if self.published == True and self.unpublished == False:
+            if append:
+                filters += r" and (" + self.publInitFilter  + ")"
+            else:
+                filters += r"$filter=(" + self.publInitFilter  + ")"
+                append = True
+        elif self.published == False and self.unpublished == True:
+            if append:
+                filters += r" and (" + self.unpublInitFilter  + ")"
+            else:
+                filters += r"$filter=(" + self.unpublInitFilter  + ")"
+                append = True
+        # Else they're either both true or both false. Then we don't care, i.e. no filtering
+
+        if self.fromdate:
+            filterStr = self.fromdateInitFilter   + f"{self.fromdate}"
+            if append:
+                filters += r" and (" + filterStr + ")" 
+            else:
+                filters += r"$filter=(" + filterStr + ")"
+                append = True
+
+        if self.todate:
+            filterStr = self.todateInitFilter   + f"{self.todate}"
+            if append:
+                filters += r" and (" + filterStr + ")" 
+            else:
+                filters += r"$filter=(" + filterStr + ")"
+                append = True
+
+        if not self.inactive: # default unchecked is to exclude inactive
+            if append:
+                filters += r" and (" + self.activeFilter  + ")"
+            else:
+                filters += r"$filter=(" + self.activeFilter  + ")"
+                append = True
+
+        return filters
