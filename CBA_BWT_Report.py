@@ -4,7 +4,8 @@ import sys
 import configparser  
 import json
 from datetime import datetime
-
+import pandas as pd
+import csv
 """
     This module is used to generate a report of body weight data for the CBA.
     It also contains the functions that produce the data warehouse.
@@ -128,29 +129,72 @@ def build_data_warehouse(cbbList,
                           SERVICE_USERNAME, 
                           SERVICE_PASSWORD
                           ):   
-    
-    newObj = runQuery.CBAAssayHandler(cbbList, requestList, templateList, \
-        from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,'CBA') 
-        
-    tupleList = (newObj.controller())
-    # Write the Dataframes to a CSV file
-    # Open the CSV for adding data
-    f = open('./data/KOMP_BWT_Report.csv', 'a', encoding='utf-8')
-    for my_tuple in tupleList:
-        exp_name,df = my_tuple
-        # Remove blank lines
-        df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
-        df.dropna(how='all', inplace=True)
-        df.to_csv(f,encoding='utf-8', errors='replace', index=False)
-    f.close()
+    try:    
+        newObj = runQuery.CBAAssayHandler(cbbList, requestList, templateList, \
+            from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,'CBA') 
+            
+        tupleList = (newObj.controller())
+        return tupleList
+    except Exception as e:
+        print(e)
+        return None
     
 def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
     
-    # Get the experiments that have body weights
-    # For each experiment get the batches 
-    requestList = []
-    templateList = ['CBA_BODY_WEIGHT_EXPERIMENT']  # TESTING
-    cbbList = ['CBB1774']  # Batches  # TESTING
+    pertinent_experiments = [
+    'CBA_BODY_WEIGHT_EXPERIMENT',
+    'CBA_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT',
+    'CBA_BASELINE_GLUCOSE_EXPERIMENT',
+    'CBA_DEXA_EXPERIMENT',
+        # 'CBA_BASIC_ECHOCARDIOGRAPHY_EXPERIMENT', -- No BWTs In Mouse Details tab?
+        # 'CBA_FEAR_CONDITIONING_EXPERIMENT',  No data -- but it looks like attribute exists. REV navigation issue exists
+    'CBA_FRAILTY_EXPERIMENT',
+        # 'CBA_GLUCOSE_CLAMPS_EXPERIMENT',  No data
+        # 'CBA_GLUCOSE_TOLERANCE_EXPERIMENT',  No REV_EXPERIMENT_BATCH_CBA_GLUCOSE_TOLERANCE_EXPERIMEN
+    'CBA_GRIP_STRENGTH_EXPERIMENT',
+    'CBA_GTT_PLUS_INSULIN_EXPERIMENT',
+    'CBA_HEART_WEIGHT_EXPERIMENT',  # No data! Why?
+    'CBA_INDIRECT_CALORIMETRY_24H_FAST_REFEED_EXPERIMENT',
+    'CBA_INSULIN_TOLERANCE_TEST_EXPERIMENT',
+    'CBA_INTRAOCULAR_PRESSURE_EXPERIMENT',
+        # 'CBA_MAGNETIC_RESONANCE_IMAGING_EXPERIMENT',  No Data
+        # 'CBA_MICRO_CT_EXPERIMENT',  Data but No BWTs
+    'CBA_MMTT_PLUS_HORMONE_EXPERIMENT',
+    'CBA_NMR_BODY_COMPOSITION_EXPERIMENT',
+        # 'CBA_NON-INVASIVE_BLOOD_PRESSURE_EXPERIMENT', Dash in name may be an issue!
+        # 'CBA_PIEZO_5_DAY EXPERIMENT',  No REV navigation
+        # 'CBA_PIEZOELECTRIC_SLEEP_MONITOR_SYSTEM_EXPERIMENT', No data
+        # 'CBA_PYRUVATE_TOLERANCE_TEST_EXPERIMENT', No data
+    'CBA_UNCONSCIOUS_ELECTROCARDIOGRAM_EXPERIMENT'
+        # 'CBA_VOLUNTARY_RUNNING_WHEELS_EXPERIMENT' No data
+        ]
+    
+    keep_columns = [
+        'ExperimentName',
+        'CBA_Request',
+        'CBA_Batch',
+        'Sample',
+        'Sex',
+        'Genotype',
+        'Strain',
+        'User_Defined_Strain_Name',
+        'Primary_ID_Value',
+        'Whole_Mouse_Fail',
+        'Whole_Mouse_Fail_Reason',
+        'Experiment',
+        'Experiment_Date',
+        'Tester_Name',
+        'Age_(wks)',
+        'Experiment_Barcode',
+        'Body_Weight_(g)',
+        'Body_Weight_QC',
+        'Secondary_ID_Value',
+        'Entire_Assay_Fail_Reason',
+        'Entire_Assay_Fail_Comments']
+        
+    # Initialize the variables
+    requestList = []        
+    cbbList = '' 
     from_test_date = ''
     to_test_date = ''
     publishedBool = False
@@ -158,21 +202,84 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
     inactiveBool = False
     summaryBool = True
     jaxstrain = ''
-
-    build_data_warehouse(cbbList, 
-                          requestList, 
-                          templateList, 
-                          from_test_date, 
-                          to_test_date, 
-                          publishedBool, 
-                          unpublishedBool, 
-                          inactiveBool, 
-                          summaryBool, 
-                          jaxstrain, 
-                          SERVICE_USERNAME, 
-                          SERVICE_PASSWORD
-                          )
+    
+    try:
+        # Open the file once
+        f = open("./data/BIG_ASS_raw_data.csv", 'w', encoding='utf-8')
+        # Write keep_columns as CSV header line
+        csvwriter = csv.writer(f)
+        csvwriter.writerow(keep_columns)
+                
+        # Get the experiments that have body weights
+        for experiment in pertinent_experiments:
+            templateList =  [experiment]
+            # For each experiment get the batches 
+            # 1. Setup the query
+            newObj = runQuery.CBABatchBarcodeRequestHandler(cbbList, requestList, templateList, \
+                from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,'CBA') 
+            # 2. get the batches   
+            tupleList = (newObj.controller())
+            
+            batch_ls = []
+            for my_tuple in tupleList:
+                barcode_ls = my_tuple['Barcode'] # Just want the barcode
+                for val in barcode_ls:
+                    batch_ls.append(val)   
+            
+            # batch_ls = ['CBB462','CBB534','CBB535','CBB536','CBB538','CBB539','CBB537'] #  DEBUGGING
+            # Pass in 5 batches at a time for the current experiment
+            lower = 0
+            upper = 5
+            complete_response_ls = []
+            while lower < len(batch_ls):
+                cbbList = batch_ls[lower:upper]
+                tuple_ls = build_data_warehouse(cbbList, 
+                                requestList, 
+                                templateList, 
+                                from_test_date, 
+                                to_test_date, 
+                                publishedBool, 
+                                unpublishedBool, 
+                                inactiveBool, 
+                                summaryBool, 
+                                jaxstrain, 
+                                SERVICE_USERNAME, 
+                                SERVICE_PASSWORD
+                                )
+                lower = upper
+                upper += 5
+                complete_response_ls.extend(tuple_ls)
+                
+            # Get the last batch
+            
+            for my_tuple in complete_response_ls:
+                _,df = my_tuple 
+                df.insert(loc=0,column="ExperimentName",value=templateList[0])  
+                df = relevantColumnsOnly(keep_columns,df)
+                df.to_csv(f,encoding='utf-8', errors='replace', index=False, header=False)
+            #f.close()
+    except Exception as e:
+        print(e)    
+    finally:
+        f.close()    
     return 
+
+def relevantColumnsOnly(keep_columns,df): 
+    # 1. Change the column names
+    change_names = {"odd_body_weight_name": "Body_Weight_(g)"}
+    for key in change_names:
+        df.rename(columns={key: change_names[key]}, inplace=True)
+    
+    # 2. Drop the slop
+    for col in df.columns:
+        if col not in keep_columns:
+            df.drop(col, axis=1, inplace=True)
+    # 3. Make sure the columns are in the dataframe
+    for col in keep_columns:
+        if col not in df.columns:
+            df[col] = ''
+            print("Added column:" + col)
+    return df
 
 def has_komp_access(user, service_username, service_password):
     has_komp_access = False
