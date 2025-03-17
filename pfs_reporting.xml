@@ -6,7 +6,7 @@
 
 
 <code file="pfs_form.py" />
- <inputs>
+<inputs>
     <param format="txt" name="cba_request" multiple="true" value="" type="select" label="CBA Request" dynamic_options="get_request_fields()"/>
     <param format="txt" name="cba_batch" multiple="true" value="" type="select" label="CBA Batch" dynamic_options="get_batch_fields()" />
     <param format="txt" name="experiment" multiple="true" type="select" value=""  label="Experiment" dynamic_options="get_experiment_fields()" />
@@ -19,7 +19,8 @@
 		<option value="s">Summary Output:</option>
 		<option value="i">Include Inactive:</option>
     </param>
- </inputs>
+</inputs>
+
 <outputs>
     <data name="out_file1" format="xlsx" metadata_source="input1"/>
 </outputs>

@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 import pandas as pd
 import csv
+from io import BytesIO as IO
 """
     This module is used to generate a report of body weight data for the CBA.
     It also contains the functions that produce the data warehouse.
@@ -17,7 +18,9 @@ import csv
     The warehouse builder calls body_weight_data_warehouse()
 """
 def returnList(pList):
-    if ',' in pList:
+    if len(pList) == 0:
+        return []
+    elif ',' in pList:
         return pList.split(',')
     elif pList == 'None':
         return []
@@ -54,7 +57,6 @@ def main():
     unpublishedBool = False
     inactiveBool = False
     summaryBool = False
-    jaxstrain = ''
     f_from_test_date = ''
     f_to_test_date = ''
     build_data_warehouse = str(args.build_data_warehouse).lower() == 'true'
@@ -80,9 +82,8 @@ def main():
     else:
         f_to_test_date = None
  
-    if args.jaxstrain:
-        jaxstrain = args.jaxstrain
-
+    jaxstrainLs = returnList(args.jaxstrain) if args.jaxstrain else [] 
+        
     if build_data_warehouse == True:
         # Only body weight for now
         body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD)
@@ -95,9 +96,8 @@ def main():
                  unpublishedBool, 
                  inactiveBool, 
                  summaryBool, 
-                 jaxstrain)
+                 jaxstrainLs)
                 
-        sys.stdout.buffer.write(report_data) # Excel data that Galaxy will redirect to an Excel file
     return
 
 def fetch_report(cbbList, 
@@ -109,13 +109,62 @@ def fetch_report(cbbList,
                  unpublishedBool, 
                  inactiveBool, 
                  summaryBool, 
-                 jaxstrain, 
-                 SERVICE_USERNAME, 
-                 SERVICE_PASSWORD
+                 jaxstrainLs
                  ):
     # Generate the report from the so-called data warehouse based on the commandline args.
+    dw_df = pd.read_csv('data/CBA_BWT_raw_data.csv')
+    
+    # Filter the data
+    #Start with CBA_Request
+    dw_df = filter(dw_df,"CBA_Request",requestList)
+    print(dw_df)
+    # Next Experiment
+    dw_df = filter(dw_df,"ExperimentName",templateList)
+    print(dw_df)
+    # Next Batch
+    dw_df = filter(dw_df,"CBA_Batch",cbbList)
+    print(dw_df)
+    
+    # Next JAX Strain
+    jaxstrainLs = [element for element in jaxstrainLs if len(element) > 0]
+    dw_df = filter(dw_df,"Strain",jaxstrainLs)
+    print(dw_df)
+    
+    # Next Date Range
+    if from_test_date:
+        dw_df = dw_df[dw_df['Experiment_Date'] >= from_test_date]
+    if to_test_date:    
+        dw_df = dw_df[dw_df['Experiment_Date'] <= to_test_date] 
+    # Write the data to a file
+    dw_df.to_csv("data/CBA_BWT.csv",index=False)
+    write_to_excel(dw_df)
     return
- 
+
+
+# Dump out data as an Excel file
+def write_to_excel(df):
+    
+    excel_file = IO()
+    xlwriter = pd.ExcelWriter(excel_file, 
+                              date_format="YYYY-MM-DD",
+                              datetime_format="YYYY-MM-DD HH:MM:SS",
+                              engine='xlsxwriter')
+
+    df.to_excel(xlwriter, sheet_name="BodyWeights", index=False)
+
+    workbook = xlwriter.book
+    worksheet = xlwriter.sheets["BodyWeights"]
+
+    # set experiment sample numeric columns with PFS precision settings
+    df_format = pd.DataFrame()
+
+    # Do I need to do anything for formatting?
+    
+    xlwriter.close()
+    excel_file.seek(0)  #reset to beginning
+    sys.stdout.buffer.write(excel_file.getbuffer())
+    return
+
 def build_data_warehouse(cbbList, 
                           requestList, 
                           templateList, 
@@ -280,6 +329,19 @@ def relevantColumnsOnly(keep_columns,df):
             df[col] = ''
             print("Added column:" + col)
     return df
+
+
+def filter(df_list,column_name,filter_list):
+    # Take the already winnowed list and keep only the rows that match the filter
+    if len(filter_list) == 0:
+        return df_list
+    
+    filtered_list = pd.DataFrame()
+    for filter in filter_list:
+        tmp_df = df_list[df_list[column_name] == filter]
+        filtered_list = pd.concat([filtered_list,tmp_df])
+    return filtered_list
+
 
 def has_komp_access(user, service_username, service_password):
     has_komp_access = False

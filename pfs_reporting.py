@@ -15,7 +15,7 @@ def returnList(pList):
     else: return [pList]
 
 def main():
-    """
+    
     parser = argparse.ArgumentParser() 
     parser.add_argument("-r", "--request", help = "Show Output", nargs='?', const='')
     parser.add_argument("-b", "--batch", help = "Show Output",  nargs='?', const='')
@@ -26,7 +26,7 @@ def main():
     parser.add_argument("-u", "--user", help = "Show Output")
     parser.add_argument("-j", "--jaxstrain", help = "Show Output", nargs='?', const='')
     args = parser.parse_args() 
-    """
+    
     public_config = configparser.ConfigParser()
     public_config.read("./config/setup.cfg")
     SERVICE_USERNAME = public_config["CORE LIMS"]["service username"]
@@ -34,8 +34,7 @@ def main():
     private_config = configparser.ConfigParser()
     private_config.read("./config/secret.cfg")
     SERVICE_PASSWORD = private_config["CORE LIMS"]["service password"]
-
-    """    
+   
 
     if not(has_cba_access(args.user, SERVICE_USERNAME, SERVICE_PASSWORD)):
         raise Exception("User %s does not have access to CBA" % args.user) 
@@ -69,6 +68,7 @@ def main():
  
     if args.jaxstrain:
         jaxstrain = args.jaxstrain
+        
     """
     cbbList = ['CBB1261','CBB1229']
     requestList = ''
@@ -80,16 +80,13 @@ def main():
     inactiveBool = None
     summaryBool = True
     jaxstrain = 'JR000664'
+    """
     
     newObj = runQuery.CBAAssayHandler(cbbList, requestList, templateList, \
         f_from_test_date, f_to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD) # Need to add unpublishedBool
         
     dfList = (newObj.controller())
     data = newObj.writeFile(dfList)
-
-    #dealie.seek(0)
-    #with open("output.txt", "wb") as f:  #!works
-    #    f.write(dealie.getbuffer())
     sys.stdout.buffer.write(data.getbuffer())
 
 def has_cba_access(user, service_username, service_password):
