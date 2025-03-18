@@ -21,7 +21,7 @@
     </inputs>
 
     <outputs>
-        <data name="out_file2" format="csv"/>
+        <data name="out_file2" format="xlxs" metadata_source="input1"/>
     </outputs>
 
     <help>

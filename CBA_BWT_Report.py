@@ -10,6 +10,11 @@ from io import BytesIO as IO
 """
     This module is used to generate a report of body weight data for the CBA.
     It also contains the functions that produce the data warehouse.
+    
+    It gets data from a number of diffent CBA experiments that have a body weight attribute.
+    The data is stored in a data warehouse. The data warehouse is a CSV file that is
+    read into a pandas dataframe. The data is then filtered based on the commandline.
+    
     The report is generated from the data warehouse and is based on the commandline
     arguments passed to the script. The script is called by Galaxy and the report
     is written to an Excel file.
@@ -17,6 +22,20 @@ from io import BytesIO as IO
     Galaxy calls main() which parses the commandline arguments and then calls fetch_report()
     The warehouse builder calls body_weight_data_warehouse()
 """
+
+# Stanard function to check if a user has access to the CBA
+def has_core_access(user, service_username, service_password):
+    has_komp_access = False
+    check_access_query = runQuery.QueryHandler(service_username, service_password)
+    employee_string = f"EMPLOYEE?&expand=PROJECT&$filter=contains(CI_USERNAME, '{user.lower()}') and PROJECT/any(a:a/Name eq 'Center for Biometric Analysis')"
+    result_data = check_access_query.runQuery(check_access_query.queryBase + employee_string, 'xml')
+    json_data = json.loads(result_data)
+    if len(json_data['value']) > 0:
+        has_komp_access = True
+    return has_komp_access
+
+
+# Turn a comma separated list on the command into a python list
 def returnList(pList):
     if len(pList) == 0:
         return []
@@ -26,79 +45,18 @@ def returnList(pList):
         return []
     else: return [pList]
 
-def main():
-    # Called by Galaxy
-    parser = argparse.ArgumentParser() 
-    parser.add_argument("-r", "--request", help = "Show Output", nargs='?', const='')
-    parser.add_argument("-b", "--batch", help = "Show Output",  nargs='?', const='')
-    parser.add_argument("-e", "--experiment", help = "Show Output", nargs='?', const='')
-    parser.add_argument("-f", "--from_test_date", help = "Show Output", nargs='?', const='')
-    parser.add_argument("-t", "--to_test_date", help = "Show Output", nargs='?', const='')
-    parser.add_argument("-o", "--options", help = "Show Output", nargs='?', const='')
-    parser.add_argument("-u", "--user", help = "Show Output")
-    parser.add_argument("-j", "--jaxstrain", help = "Show Output", nargs='?', const='')
-    parser.add_argument("-w", "--build_data_warehouse", help = "Show Output", nargs='?', const='')
-    args = parser.parse_args() 
-   
-    # Get credentials from the config file
-    public_config = configparser.ConfigParser()
-    public_config.read("./config/setup.cfg")
-    SERVICE_USERNAME = public_config["CORE LIMS"]["service username"]
 
-    private_config = configparser.ConfigParser()
-    private_config.read("./config/secret.cfg")
-    SERVICE_PASSWORD = private_config["CORE LIMS"]["service password"]
-
-    # Check if the user has access to CBA
-    if not(has_komp_access(args.user, SERVICE_USERNAME, SERVICE_PASSWORD)):
-        raise Exception("User %s does not have access to CBA" % args.user) 
-
-    publishedBool = False
-    unpublishedBool = False
-    inactiveBool = False
-    summaryBool = False
-    f_from_test_date = ''
-    f_to_test_date = ''
-    build_data_warehouse = str(args.build_data_warehouse).lower() == 'true'
+# Remove the rows fom the dataframe that do not match the filter
+def filter(df_list,column_name,filter_list):
+    # Take the already winnowed list and keep only the rows that match the filter
+    if len(filter_list) == 0:  # No filter
+        return df_list
     
-    for opt in args.options.split(","):
-        publishedBool = True if opt == 'p' else publishedBool
-        inactiveBool = True if opt == 'i' else inactiveBool
-        summaryBool = True if opt == 's' else summaryBool
-        unpublishedBool = True if opt == 'u' else unpublishedBool
-    
-    cbbList = returnList(args.batch) if args.batch else []
-
-    requestList = returnList(args.request) if args.request else []
-    templateList = returnList(args.experiment) if args.experiment else []
-    
-    # Format the dates
-    if args.from_test_date:
-        f_from_test_date = datetime.strftime(datetime.strptime(args.from_test_date, '%m-%d-%Y'), '%Y-%m-%d')
-    else:
-        f_from_test_date = None
-    if args.to_test_date:
-        f_to_test_date = datetime.strftime(datetime.strptime(args.to_test_date, '%m-%d-%Y'), '%Y-%m-%d') 
-    else:
-        f_to_test_date = None
- 
-    jaxstrainLs = returnList(args.jaxstrain) if args.jaxstrain else [] 
-        
-    if build_data_warehouse == True:
-        # Only body weight for now
-        body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD)
-    else:
-        report_data = fetch_report(cbbList,requestList, 
-                 templateList, 
-                 f_from_test_date, 
-                 f_to_test_date, 
-                 publishedBool, 
-                 unpublishedBool, 
-                 inactiveBool, 
-                 summaryBool, 
-                 jaxstrainLs)
-                
-    return
+    filtered_list = pd.DataFrame()
+    for filter in filter_list:
+        tmp_df = df_list[df_list[column_name] == filter]
+        filtered_list = pd.concat([filtered_list,tmp_df])
+    return filtered_list
 
 def fetch_report(cbbList, 
                  requestList, 
@@ -112,9 +70,10 @@ def fetch_report(cbbList,
                  jaxstrainLs
                  ):
     # Generate the report from the so-called data warehouse based on the commandline args.
-    dw_df = pd.read_csv('data/CBA_BWT_raw_data.csv')
     
-    # Filter the data
+    # Get the whole shebang then start removing rows that do not match the filter
+    dw_df = pd.read_csv('./data/CBA_BWT_raw_data.csv')
+
     #Start with CBA_Request
     dw_df = filter(dw_df,"CBA_Request",requestList)
     print(dw_df)
@@ -128,7 +87,7 @@ def fetch_report(cbbList,
     # Next JAX Strain
     jaxstrainLs = [element for element in jaxstrainLs if len(element) > 0]
     dw_df = filter(dw_df,"Strain",jaxstrainLs)
-    print(dw_df)
+    #print(dw_df)
     
     # Next Date Range
     if from_test_date:
@@ -136,7 +95,7 @@ def fetch_report(cbbList,
     if to_test_date:    
         dw_df = dw_df[dw_df['Experiment_Date'] <= to_test_date] 
     # Write the data to a file
-    dw_df.to_csv("data/CBA_BWT.csv",index=False)
+    dw_df.to_csv("./data/CBA_BWT.csv",index=False)
     write_to_excel(dw_df)
     return
 
@@ -165,6 +124,7 @@ def write_to_excel(df):
     sys.stdout.buffer.write(excel_file.getbuffer())
     return
 
+# User has specified the "w" option. Build the data warehouse
 def build_data_warehouse(cbbList, 
                           requestList, 
                           templateList, 
@@ -189,7 +149,7 @@ def build_data_warehouse(cbbList,
         return None
     
 def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
-    
+    # For each pertinent experiment 1) get the batches and then 2) get the body weight data.
     pertinent_experiments = [
     'CBA_BODY_WEIGHT_EXPERIMENT',
     'CBA_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT',
@@ -218,6 +178,7 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
         # 'CBA_VOLUNTARY_RUNNING_WHEELS_EXPERIMENT' No data
         ]
     
+    # The columns that will be available in the data warehouse
     keep_columns = [
         'ExperimentName',
         'CBA_Request',
@@ -246,15 +207,15 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
     cbbList = '' 
     from_test_date = ''
     to_test_date = ''
-    publishedBool = False
-    unpublishedBool = False
-    inactiveBool = False
-    summaryBool = True
-    jaxstrain = ''
+    publishedBool = False   # Unused
+    unpublishedBool = False # Unused
+    inactiveBool = False    # Unused
+    summaryBool = True      # Unused
+    jaxstrain = ''          # Unused
     
     try:
         # Open the file once
-        f = open("./data/BIG_ASS_raw_data.csv", 'w', encoding='utf-8')
+        f = open("./data/CBA_BWT_raw_data.csv", 'w', encoding='utf-8') # The data warehouse is currently a CSV file
         # Write keep_columns as CSV header line
         csvwriter = csv.writer(f)
         csvwriter.writerow(keep_columns)
@@ -266,6 +227,7 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
             # 1. Setup the query
             newObj = runQuery.CBABatchBarcodeRequestHandler(cbbList, requestList, templateList, \
                 from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,'CBA') 
+            
             # 2. get the batches   
             tupleList = (newObj.controller())
             
@@ -275,7 +237,6 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
                 for val in barcode_ls:
                     batch_ls.append(val)   
             
-            # batch_ls = ['CBB462','CBB534','CBB535','CBB536','CBB538','CBB539','CBB537'] #  DEBUGGING
             # Pass in 5 batches at a time for the current experiment
             lower = 0
             upper = 5
@@ -300,19 +261,20 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
                 complete_response_ls.extend(tuple_ls)
                 
             # Get the last batch
-            
             for my_tuple in complete_response_ls:
                 _,df = my_tuple 
                 df.insert(loc=0,column="ExperimentName",value=templateList[0])  
                 df = relevantColumnsOnly(keep_columns,df)
                 df.to_csv(f,encoding='utf-8', errors='replace', index=False, header=False)
-            #f.close()
+    
     except Exception as e:
         print(e)    
     finally:
         f.close()    
     return 
 
+# Clean up the dataframe by removing columns that are not in the keep_columns list, 
+# add the ones that need to be there, and change any name that is non-standard.
 def relevantColumnsOnly(keep_columns,df): 
     # 1. Change the column names
     change_names = {"odd_body_weight_name": "Body_Weight_(g)"}
@@ -324,44 +286,93 @@ def relevantColumnsOnly(keep_columns,df):
         if col not in keep_columns:
             df.drop(col, axis=1, inplace=True)
     # 3. Make sure the columns are in the dataframe
+    idx = 0
     for col in keep_columns:
         if col not in df.columns:
-            df[col] = ''
+            df.insert(idx,col,'')
             print("Added column:" + col)
+        idx += 1
     return df
 
-
-def filter(df_list,column_name,filter_list):
-    # Take the already winnowed list and keep only the rows that match the filter
-    if len(filter_list) == 0:
-        return df_list
-    
-    filtered_list = pd.DataFrame()
-    for filter in filter_list:
-        tmp_df = df_list[df_list[column_name] == filter]
-        filtered_list = pd.concat([filtered_list,tmp_df])
-    return filtered_list
-
-
-def has_komp_access(user, service_username, service_password):
-    has_komp_access = False
-    check_access_query = runQuery.QueryHandler(service_username, service_password)
-    employee_string = f"EMPLOYEE?&expand=PROJECT&$filter=contains(CI_USERNAME, '{user.lower()}') and PROJECT/any(a:a/Name eq 'Center for Biometric Analysis')"
-    result_data = check_access_query.runQuery(check_access_query.queryBase + employee_string, 'xml')
-    json_data = json.loads(result_data)
-    if len(json_data['value']) > 0:
-        has_komp_access = True
-    return has_komp_access
+def main():
+    # Called by Galaxy. 
+    # Parse the args,
+    # Either build the data warehouse or produce a report
+    # If the 'w' option is set the other args are irrelevant.
+    parser = argparse.ArgumentParser() 
+    parser.add_argument("-r", "--request", help = "Show Output", nargs='?', const='')
+    parser.add_argument("-b", "--batch", help = "Show Output",  nargs='?', const='')
+    parser.add_argument("-e", "--experiment", help = "Show Output", nargs='?', const='')
+    parser.add_argument("-f", "--from_test_date", help = "Show Output", nargs='?', const='')
+    parser.add_argument("-t", "--to_test_date", help = "Show Output", nargs='?', const='')
+    parser.add_argument("-o", "--options", help = "Show Output", nargs='?', const='')
+    parser.add_argument("-u", "--user", help = "Show Output")
+    parser.add_argument("-j", "--jaxstrain", help = "Show Output", nargs='?', const='')
+    parser.add_argument("-w", "--build_data_warehouse", help = "Show Output", nargs='?', const='')
+    args = parser.parse_args() 
    
-# For each experiment and for each batch get the body weight 
-# data as well as other info wrt experiment, batch, animal, etc.
+    # Get credentials from the config file
+    public_config = configparser.ConfigParser()
+    public_config.read("./config/setup.cfg")
+    SERVICE_USERNAME = public_config["CORE LIMS"]["service username"]
 
+    private_config = configparser.ConfigParser()
+    private_config.read("./config/secret.cfg")
+    SERVICE_PASSWORD = private_config["CORE LIMS"]["service password"]
 
+    # Check if the user has access to CBA
+    if not(has_core_access(args.user, SERVICE_USERNAME, SERVICE_PASSWORD)):
+        raise Exception("User %s does not have access to CBA" % args.user) 
+
+    # Initialize the variables
+    publishedBool = False
+    unpublishedBool = False
+    inactiveBool = False
+    summaryBool = False
+    f_from_test_date = ''
+    f_to_test_date = ''
+    
+    # If true then simply build the data warehouse
+    build_data_warehouse = str(args.build_data_warehouse).lower() == 'true'
+    
+    # Do these make sense in the body weight reports?
+    for opt in args.options.split(","):
+        publishedBool = True if opt == 'p' else publishedBool
+        inactiveBool = True if opt == 'i' else inactiveBool
+        summaryBool = True if opt == 's' else summaryBool
+        unpublishedBool = True if opt == 'u' else unpublishedBool
+    
+    cbbList = returnList(args.batch) if args.batch else []
+    requestList = returnList(args.request) if args.request else []
+    templateList = returnList(args.experiment) if args.experiment else []
+    jaxstrainLs = returnList(args.jaxstrain) if args.jaxstrain else [] 
+    
+    # Format the dates
+    if args.from_test_date:
+        f_from_test_date = datetime.strftime(datetime.strptime(args.from_test_date, '%m-%d-%Y'), '%Y-%m-%d')
+    else:
+        f_from_test_date = None
+    if args.to_test_date:
+        f_to_test_date = datetime.strftime(datetime.strptime(args.to_test_date, '%m-%d-%Y'), '%Y-%m-%d') 
+    else:
+        f_to_test_date = None
+ 
+        
+    if build_data_warehouse == True:
+        # Only body weight for now
+        body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD)
+    else:
+        report_data = fetch_report(cbbList,requestList, 
+                 templateList, 
+                 f_from_test_date, 
+                 f_to_test_date, 
+                 publishedBool, 
+                 unpublishedBool, 
+                 inactiveBool, 
+                 summaryBool, 
+                 jaxstrainLs)
+                
+    return
+   
 if __name__ == "__main__":
     main()
-
-
-# To get batches for the body weight experiments
-"""
-    https://jacksonlabs.platformforscience.com/PROD/odata/CBA_BATCH?$expand=REV_EXPERIMENT_BATCH_CBA_BODY_WEIGHT_EXPERIMENT&$select=Barcode&$count=true
-"""
