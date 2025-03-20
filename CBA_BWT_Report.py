@@ -147,7 +147,7 @@ def build_data_warehouse(cbbList,
     except Exception as e:
         print(e)
         return None
-    
+  
 def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
     # For each pertinent experiment 1) get the batches and then 2) get the body weight data.
     pertinent_experiments = [
@@ -176,7 +176,7 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
         # 'CBA_PYRUVATE_TOLERANCE_TEST_EXPERIMENT', No data
     'CBA_UNCONSCIOUS_ELECTROCARDIOGRAM_EXPERIMENT'
         # 'CBA_VOLUNTARY_RUNNING_WHEELS_EXPERIMENT' No data
-        ]
+    ]
     
     # The columns that will be available in the data warehouse
     keep_columns = [
@@ -198,7 +198,6 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
         'Experiment_Barcode',
         'Body_Weight_(g)',
         'Body_Weight_QC',
-        'Secondary_ID_Value',
         'Entire_Assay_Fail_Reason',
         'Entire_Assay_Fail_Comments']
         
@@ -261,10 +260,12 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
                 complete_response_ls.extend(tuple_ls)
                 
             # Get the last batch
+            pd.set_option('display.max_columns', None)
             for my_tuple in complete_response_ls:
                 _,df = my_tuple 
-                df.insert(loc=0,column="ExperimentName",value=templateList[0])  
+                df.insert(loc=0,column="ExperimentName",value=templateList[0])
                 df = relevantColumnsOnly(keep_columns,df)
+                df.fillna('', inplace = True)
                 df.to_csv(f,encoding='utf-8', errors='replace', index=False, header=False)
     
     except Exception as e:
@@ -290,7 +291,6 @@ def relevantColumnsOnly(keep_columns,df):
     for col in keep_columns:
         if col not in df.columns:
             df.insert(idx,col,'')
-            print("Added column:" + col)
         idx += 1
     return df
 
@@ -336,11 +336,12 @@ def main():
     build_data_warehouse = str(args.build_data_warehouse).lower() == 'true'
     
     # Do these make sense in the body weight reports?
-    for opt in args.options.split(","):
-        publishedBool = True if opt == 'p' else publishedBool
-        inactiveBool = True if opt == 'i' else inactiveBool
-        summaryBool = True if opt == 's' else summaryBool
-        unpublishedBool = True if opt == 'u' else unpublishedBool
+    if args.options != None:
+        for opt in args.options.split(","):
+            publishedBool = True if opt == 'p' else publishedBool
+            inactiveBool = True if opt == 'i' else inactiveBool
+            summaryBool = True if opt == 's' else summaryBool
+            unpublishedBool = True if opt == 'u' else unpublishedBool
     
     cbbList = returnList(args.batch) if args.batch else []
     requestList = returnList(args.request) if args.request else []
