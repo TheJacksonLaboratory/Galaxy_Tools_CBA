@@ -8,10 +8,10 @@ import pandas as pd
 import csv
 from io import BytesIO as IO
 """
-    This module is used to generate a report of body weight data for the CBA.
+    This module is used to generate a report of body weight data for the KOMP Project.
     It also contains the functions that produce the data warehouse.
     
-    It gets data from a number of diffent CBA experiments that have a body weight attribute.
+    It gets data from a number of diffent KOMP experiments that have a body weight attribute.
     The data is stored in a data warehouse. The data warehouse is a CSV file that is
     read into a pandas dataframe. The data is then filtered based on the commandline.
     
@@ -74,16 +74,16 @@ def fetch_report(cbbList,
     # Generate the report from the so-called data warehouse based on the commandline args.
     
     # Get the whole shebang then start removing rows that do not match the filter
-    dw_df = pd.read_csv(ROOT_DIR + '/data/CBA_BWT_raw_data.csv')
+    dw_df = pd.read_csv(ROOT_DIR + '/data/KOMP_BWT_raw_data.csv')
 
     #Start with CBA_Request
-    dw_df = filter(dw_df,"CBA_Request",requestList)
+    dw_df = filter(dw_df,"KOMP_Request",requestList)
     print(dw_df)
     # Next Experiment
     dw_df = filter(dw_df,"ExperimentName",templateList)
     print(dw_df)
     # Next Batch
-    dw_df = filter(dw_df,"CBA_Batch",cbbList)
+    dw_df = filter(dw_df,"KOMP_Batch",cbbList)
     print(dw_df)
     
     # Next JAX Strain
@@ -98,7 +98,7 @@ def fetch_report(cbbList,
         dw_df = dw_df[dw_df['Experiment_Date'] <= to_test_date] 
     # Write the data to a file
     dw_df.to_csv(sys.stdout,index=False)
-    dw_df.to_csv(ROOT_DIR + "/data/CBA_BWT.csv",index=False)
+    dw_df.to_csv(ROOT_DIR + "/data/KOMP_BWT.csv",index=False)
     #write_to_excel(dw_df)
     return
 
@@ -143,7 +143,7 @@ def build_data_warehouse(cbbList,
                           ):   
     try:    
         newObj = runQuery.CBAAssayHandler(cbbList, requestList, templateList, \
-            from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,'CBA') 
+            from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,'KOMP') 
             
         tupleList = (newObj.controller())
         return tupleList
@@ -153,34 +153,13 @@ def build_data_warehouse(cbbList,
   
 def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
     # For each pertinent experiment 1) get the batches and then 2) get the body weight data.
-    # pertinent_experiments = ['CBA_FEAR_CONDITIONING_EXPERIMENT']  # DEBUG
     pertinent_experiments = [
-    'CBA_BODY_WEIGHT_EXPERIMENT',
-    'CBA_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT',
-    'CBA_BASELINE_GLUCOSE_EXPERIMENT',
-    'CBA_DEXA_EXPERIMENT',
-    'CBA_BASIC_ECHOCARDIOGRAPHY_EXPERIMENT',
-        # 'CBA_FEAR_CONDITIONING_EXPERIMENT',  No data -- but it looks like attribute exists. REV navigation issue exists
-    'CBA_FRAILTY_EXPERIMENT',
-        # 'CBA_GLUCOSE_CLAMPS_EXPERIMENT',  No data
-        # 'CBA_GLUCOSE_TOLERANCE_EXPERIMENT',  No REV_EXPERIMENT_BATCH_CBA_GLUCOSE_TOLERANCE_EXPERIMEN
-    'CBA_GRIP_STRENGTH_EXPERIMENT',  # No data
-    'CBA_GTT_PLUS_INSULIN_EXPERIMENT',
-    'CBA_HEART_WEIGHT_EXPERIMENT',  # No data! Why?
-    'CBA_INDIRECT_CALORIMETRY_24H_FAST_REFEED_EXPERIMENT',
-    'CBA_INSULIN_TOLERANCE_TEST_EXPERIMENT',
-    'CBA_INTRAOCULAR_PRESSURE_EXPERIMENT',
-        # 'CBA_MAGNETIC_RESONANCE_IMAGING_EXPERIMENT',  No Data
-        # 'CBA_MICRO_CT_EXPERIMENT',  Data but No BWTs i.e "JAX_ASSAY_BODYWEIGHT": null,
-    'CBA_MMTT_PLUS_HORMONE_EXPERIMENT',
-    'CBA_NMR_BODY_COMPOSITION_EXPERIMENT',
-        # 'CBA_NON-INVASIVE_BLOOD_PRESSURE_EXPERIMENT', Dash in name may be an issue!
-    'CBA_PIEZO_5_DAY_EXPERIMENT',  # No BODYWEIGHT but JAX_ASSAY_PIEZO_PREWEIGHT and JAX_ASSAY_PIEZO_POSTWEIGHT. How do we get batch lists?
-    'CBA_PIEZOELECTRIC_SLEEP_MONITOR_SYSTEM_EXPERIMENT', # JAX_ASSAY_PIEZO_PREWEIGHT, JAX_ASSAY_PIEZO_POSTWEIGHT. How do we get batch lists?
-    'CBA_PYRUVATE_TOLERANCE_TEST_EXPERIMENT',
-    'CBA_UNCONSCIOUS_ELECTROCARDIOGRAM_EXPERIMENT'
-        # 'CBA_VOLUNTARY_RUNNING_WHEELS_EXPERIMENT' "JAX_ASSAY_BODYWEIGHT_STARTDAY": null, "JAX_ASSAY_BODYWEIGHT_ENDDAY": null,
-    ]
+    'KOMP_BODY_WEIGHT_EXPERIMENT',
+    'KOMP_GRIP_STRENGTH_EXPERIMENT',
+    'KOMP_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT',
+    'KOMP_BODY_COMPOSITION_EXPERIMENT',
+    'KOMP_GLUCOSE_TOLERANCE_TEST_EXPERIMENT',
+    'KOMP_HEART_WEIGHT_EXPERIMENT']
     
     # The columns that will be available in the data warehouse
     keep_columns = [
@@ -188,6 +167,8 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
         'CBA_Request',
         'CBA_Batch',
         'Sample',
+        'Customer_Mouse_ID',
+        'Date_of_Birth',
         'Sex',
         'Genotype',
         'Strain',
@@ -215,33 +196,33 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
     inactiveBool = False    # Unused
     summaryBool = True      # Unused
     jaxstrain = ''          # Unused
-    
+    batch_ls = []
     try:
         # Open the file once
-        f = open(ROOT_DIR + "/data/CBA_BWT_raw_data.csv", 'w', encoding='utf-8') # The data warehouse is currently a CSV file
+        f = open(ROOT_DIR + "/data/KOMP_BWT_raw_data.csv", 'w', encoding='utf-8') # The data warehouse is currently a CSV file
         # Write keep_columns as CSV header line
         csvwriter = csv.writer(f)
         csvwriter.writerow(keep_columns)
                 
         # Get the batch of experiments that have body weights - just once
         if len(batch_ls) == 0:
-            for experiment in pertinent_experiments:
-                templateList =  [experiment]
-                # For each experiment get the batches 
-                # 1. Setup the query
-                newObj = runQuery.BatchBarcodeRequestHandler(cbbList, requestList, templateList, \
-                    from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,'CBA') 
+            templateList =  [pertinent_experiments[0]]
+            # For each experiment get the batches 
+            # 1. Setup the query
+            newObj = runQuery.BatchBarcodeRequestHandler(cbbList, requestList, templateList, \
+                from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,'KOMP') 
+            
+            # 2. get the batches   
+            tupleList = (newObj.controller())
+            
+            for my_tuple in tupleList:
+                barcode_ls = my_tuple['Barcode'] # Just want the barcode
+                for val in barcode_ls:
+                    batch_ls.append(val)   
                 
-                # 2. get the batches   
-                tupleList = (newObj.controller())
-                
-                batch_ls = []
-                for my_tuple in tupleList:
-                    barcode_ls = my_tuple['Barcode'] # Just want the barcode
-                    for val in barcode_ls:
-                        batch_ls.append(val)   
-                
-            # Pass in 5 batches at a time for the current experiment
+        # Pass in 5 batches at a time for the current experiment
+        for experiment in pertinent_experiments:
+            templateList = [experiment] # Consider just passing the whole list instead of one at a time
             lower = 0
             upper = 5
             complete_response_ls = []
@@ -274,7 +255,7 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
                 df.fillna('', inplace = True)
                 print(df)
                 df.to_csv(f,encoding='utf-8', errors='replace', index=False, header=False)
-    
+
     except Exception as e:
         print(e)    
     finally:

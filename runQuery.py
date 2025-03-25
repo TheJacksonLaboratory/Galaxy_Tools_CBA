@@ -390,7 +390,7 @@ class CBAAssayHandler(QueryHandler):
                 queryString += ")"
 
             queryString += self.build_filters(queryString)
-            
+            pd.set_option('display.max_columns', None)
             # replace placeholder string for template name and run query
             result = self.runQuery(queryString.replace("template_instance", template))
             # this line is self documenting :-)
@@ -554,17 +554,17 @@ class CBAAssayHandler(QueryHandler):
     
 """
 
-CLASS : CBABatchBarcodeRequestHandler
+CLASS : BatchBarcodeRequestHandler
 
 """
-class CBABatchBarcodeRequestHandler(QueryHandler):
+class BatchBarcodeRequestHandler(QueryHandler):
     
     def __init__(self, cbbList, requestList, templateList, fromDate, toDate, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, email, password,coreFilter=None):
         QueryHandler.__init__(self, email, password,coreFilter)
 
         # Currenty getting all the batches for a particular experiment. We may narrow the list down later
         # templateList is a list of experiment names, e.g. CBA_BODY_WEIGHT_EXPERIMENT
-        self.baseExpansion = "CBA_BATCH?$expand=REV_EXPERIMENT_BATCH_template_instance&$select=Barcode&$count=true"
+        self.baseExpansion = r"{0}_BATCH?$expand=REV_EXPERIMENT_BATCH_template_instance&$select=Barcode&$count=true".format(self.filter)
 
        
         # NOTE - THE FOLLOWING FILTERS ARE NOT CURRENTLY USED IN THIS CLASS BUT LEFT HERE IN CASE THAT CHANGES
