@@ -3,6 +3,7 @@ import os
 import sys
 import json
 from runQuery import QueryHandler
+import pandas as pd
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -23,14 +24,55 @@ query = QueryHandler(SERVICE_USERNAME, SERVICE_PASSWORD,'KOMP') # The third para
 KOMP_LINE_LIST = query.runLineQuery(query.queryBase + "MOUSE_SAMPLE?$select =Barcode&$expand=MOUSESAMPLE_STRAIN($select=Barcode)&$count=true")
 KOMP_REQUEST_LIST = query.runQuery(query.queryBase + "KOMP_REQUEST?$count=true")["Barcode"].tolist()
 KOMP_BATCH_LIST = query.runQuery(query.queryBase + "KOMP_BATCH?$count=true")["Barcode"].tolist()
+
 # This gets all the frigging experiments!
 KOMP_EXPERIMENTS = query.get_experiments() # Filter for "KOMP_"
+
+# KOMP BWT LOVs
+df = pd.read_csv('/projects/galaxy/tools/cba/data/KOMP_BWT_raw_data.csv')
+series_ls = df['Strain']
+series_ls = series_ls.astype(str)
+item_ls = series_ls.to_list()
+KOMP_BWT_LINES = list(set(item_ls))   
+KOMP_BWT_LINES.sort()
+
+series_ls = df['Sample']
+series_ls = series_ls.astype(str)
+item_ls = series_ls.to_list()
+KOMP_BWT_SAMPLES = list(set(item_ls))   
+KOMP_BWT_SAMPLES.sort()
+
+series_ls = df['ExperimentName']
+series_ls = series_ls.astype(str)
+item_ls = series_ls.to_list()
+KOMP_BWT_EXPERIMENTS = list(set(item_ls))   
+KOMP_BWT_EXPERIMENTS.sort()
+
+
+series_ls = df['Experiment_Barcode']
+series_ls = series_ls.astype(str)
+item_ls = series_ls.to_list()
+KOMP_BWT_EXPERIMENT_BARCODES = list(set(item_ls))   
+KOMP_BWT_EXPERIMENT_BARCODES.sort()
+
+series_ls = df['Customer_Mouse_ID']
+series_ls = series_ls.astype(str)
+item_ls = series_ls.to_list()
+KOMP_BWT_CUSTOMER_SAMPLE_NAME = list(set(item_ls))   
+KOMP_BWT_CUSTOMER_SAMPLE_NAME.sort()
+
+
 odata = {}
 
 odata['KOMP_LINE_LIST'] = KOMP_LINE_LIST
 odata['KOMP_REQUEST_LIST'] = KOMP_REQUEST_LIST
 odata['KOMP_BATCH_LIST'] = KOMP_BATCH_LIST
 odata['KOMP_EXPERIMENTS'] = KOMP_EXPERIMENTS
+odata['KOMP_BWT_LINES'] = KOMP_BWT_LINES
+odata['KOMP_BWT_SAMPLES'] = KOMP_BWT_SAMPLES
+odata['KOMP_BWT_CUSTOMER_SAMPLE_NAME'] = KOMP_BWT_CUSTOMER_SAMPLE_NAME
+odata['KOMP_BWT_EXPERIMENTS'] = KOMP_BWT_EXPERIMENTS
+odata['KOMP_BWT_EXPERIMENT_BARCODES'] = KOMP_BWT_EXPERIMENT_BARCODES
 
 with open('komp_lists.txt', 'w') as outfile:
     json.dump(odata, outfile)

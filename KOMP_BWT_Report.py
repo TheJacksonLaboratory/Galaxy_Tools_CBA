@@ -60,8 +60,8 @@ def filter(df_list,column_name,filter_list):
         filtered_list = pd.concat([filtered_list,tmp_df])
     return filtered_list
 
-def fetch_report(cbbList, 
-                 requestList, 
+def fetch_report(komp_customer_id_ls,
+                 komp_sample_ls, 
                  templateList, 
                  from_test_date, 
                  to_test_date, 
@@ -69,36 +69,35 @@ def fetch_report(cbbList,
                  unpublishedBool, 
                  inactiveBool, 
                  summaryBool, 
-                 jaxstrainLs
+                 jaxstrain_ls,
+                 experiment_barcode_ls
                  ):
     # Generate the report from the so-called data warehouse based on the commandline args.
     
     # Get the whole shebang then start removing rows that do not match the filter
-    dw_df = pd.read_csv(ROOT_DIR + '/data/KOMP_BWT_raw_data.csv')
+    dw_df = pd.read_csv('/projects/galaxy/tools/cba/data/KOMP_BWT_raw_data.csv')
 
-    #Start with CBA_Request
-    dw_df = filter(dw_df,"KOMP_Request",requestList)
-    print(dw_df)
-    # Next Experiment
+    #Start with 
+    dw_df = filter(dw_df,"Customer_Mouse_ID",komp_customer_id_ls)
+    # Next MUS name
+    dw_df = filter(dw_df,"Sample",komp_sample_ls)
+    # Next experiment name
     dw_df = filter(dw_df,"ExperimentName",templateList)
-    print(dw_df)
-    # Next Batch
-    dw_df = filter(dw_df,"KOMP_Batch",cbbList)
-    print(dw_df)
+    
+    dw_df = filter(dw_df,"Experiment_Barcode",experiment_barcode_ls)
     
     # Next JAX Strain
-    jaxstrainLs = [element for element in jaxstrainLs if len(element) > 0]
-    dw_df = filter(dw_df,"Strain",jaxstrainLs)
-    #print(dw_df)
+    dw_df = filter(dw_df,"Strain",jaxstrain_ls)
     
     # Next Date Range
     if from_test_date:
         dw_df = dw_df[dw_df['Experiment_Date'] >= from_test_date]
     if to_test_date:    
         dw_df = dw_df[dw_df['Experiment_Date'] <= to_test_date] 
+    
     # Write the data to a file
     dw_df.to_csv(sys.stdout,index=False)
-    dw_df.to_csv(ROOT_DIR + "/data/KOMP_BWT.csv",index=False)
+    dw_df.to_csv("/projects/galaxy/tools/cba/data/KOMP_BWT.csv",index=False)
     #write_to_excel(dw_df)
     return
 
@@ -163,28 +162,30 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
     
     # The columns that will be available in the data warehouse
     keep_columns = [
-        'ExperimentName',
-        'CBA_Request',
-        'CBA_Batch',
-        'Sample',
-        'Customer_Mouse_ID',
-        'Date_of_Birth',
-        'Sex',
-        'Genotype',
-        'Strain',
-        'User_Defined_Strain_Name',
-        'Primary_ID_Value',
-        'Whole_Mouse_Fail',
-        'Whole_Mouse_Fail_Reason',
-        'Experiment',
-        'Experiment_Date',
-        'Tester_Name',
-        'Age_(wks)',
-        'Experiment_Barcode',
-        'Body_Weight_(g)',
-        'Body_Weight_QC',
-        'Entire_Assay_Fail_Reason',
-        'Entire_Assay_Fail_Comments']
+        "ExperimentName",
+		"Sample",
+		"Customer_Mouse_ID",
+        "Body_Weight_(g)",
+		"Pen",
+		"Sex",
+		"Genotype",
+		"Strain_Name",
+		"Strain",
+		"Bedding",
+		"Diet",
+		"Additional_Notes",
+		"Primary_ID",
+		"Primary_ID_Value",
+		"Date_of_Birth",
+		"Exit Reason",
+		"Whole_Mouse_Fail",
+		"Whole_Mouse_Fail_Reason",
+		"Experiment",
+		"Experiment_Date",
+		"Experiment_Status",
+		"Protocol_Name",
+		"Tester_Name",
+		"Experiment_Barcode"]
         
     # Initialize the variables
     requestList = []        
@@ -199,10 +200,12 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
     batch_ls = []
     try:
         # Open the file once
-        f = open(ROOT_DIR + "/data/KOMP_BWT_raw_data.csv", 'w', encoding='utf-8') # The data warehouse is currently a CSV file
+        f = open("/projects/galaxy/tools/cba/data/KOMP_BWT_raw_data.csv", 'w', encoding='utf-8') # The data warehouse is currently a CSV file
         # Write keep_columns as CSV header line
         csvwriter = csv.writer(f)
-        csvwriter.writerow(keep_columns)
+        age = ["Age"]
+        # Add Age to the header row
+        csvwriter.writerow(keep_columns[0:4] + age + keep_columns[4:]) # Add the age column to the header
                 
         # Get the batch of experiments that have body weights - just once
         if len(batch_ls) == 0:
@@ -246,14 +249,24 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
                 complete_response_ls.extend(tuple_ls)
             
             # Get the last batch
-            pd.set_option('display.max_columns', None)
+            # pd.set_option('display.max_columns', None)
             for my_tuple in complete_response_ls:
                 _,df = my_tuple  
                 df.insert(loc=0,column="ExperimentName",value=templateList[0])
-                print(df)
+                # Remove unwanted columns and ensure we have the ones we need
                 df = relevantColumnsOnly(keep_columns,df)
                 df.fillna('', inplace = True)
-                print(df)
+                # Re-order the columns
+                df = df[keep_columns]
+                # Some special formating
+                df['Experiment_Date'] = pd.to_datetime(df['Experiment_Date'])
+                df['Date_of_Birth'] = pd.to_datetime(df['Date_of_Birth'])
+                # Compute the age
+                df.insert(loc=4,column="Age",value=df['Experiment_Date'] - df['Date_of_Birth'])
+                #df['Age'] = df['Experiment_Date'] - df['Date_of_Birth']
+                df['Age'] = df['Age'].dt.days / 7
+                # Organize them
+                df = df.sort_values(by=['Sample','Age'],ascending=True)
                 df.to_csv(f,encoding='utf-8', errors='replace', index=False, header=False)
 
     except Exception as e:
@@ -266,7 +279,7 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
 # add the ones that need to be there, and change any name that is non-standard.
 def relevantColumnsOnly(keep_columns,df): 
     # 1. Change the column names that don't match keep_columns but are to be kept,eg JAX_ASSAY_PIEZO_PREWEIGHT
-    change_names = {"Pre-weight_(g)": "Body_Weight_(g)", "Pre-weight_(g)": "Body_Weight_(g)" }
+    change_names = {"Total_Tissue_Mass_(g)": "Body_Weight_(g)", "Pre-weight_(g)": "Body_Weight_(g)" }
     for key in change_names:
         df.rename(columns={key: change_names[key]}, inplace=True)
     
@@ -288,10 +301,11 @@ def main():
     # Either build the data warehouse or produce a report
     # If the 'w' option is set the other args are irrelevant.
     parser = argparse.ArgumentParser() 
-    parser.add_argument("-r", "--request", help = "Show Output", nargs='?', const='')
-    parser.add_argument("-b", "--batch", help = "Show Output",  nargs='?', const='')
+    parser.add_argument("-r", "--komp_sample", help = "Show Output", nargs='?', const='')
+    parser.add_argument("-b", "--komp_customer_id", help = "Show Output",  nargs='?', const='')
     parser.add_argument("-e", "--experiment", help = "Show Output", nargs='?', const='')
     parser.add_argument("-f", "--from_test_date", help = "Show Output", nargs='?', const='')
+    parser.add_argument("-x", "--experiment_barcode", help = "Show Output", nargs='?', const='')
     parser.add_argument("-t", "--to_test_date", help = "Show Output", nargs='?', const='')
     parser.add_argument("-o", "--options", help = "Show Output", nargs='?', const='')
     parser.add_argument("-u", "--user", help = "Show Output")
@@ -301,11 +315,11 @@ def main():
    
     # Get credentials from the config file
     public_config = configparser.ConfigParser()
-    public_config.read("./config/setup.cfg")
+    public_config.read("/projects/galaxy/tools/cba/config/setup.cfg")
     SERVICE_USERNAME = public_config["CORE LIMS"]["service username"]
 
     private_config = configparser.ConfigParser()
-    private_config.read("./config/secret.cfg")
+    private_config.read("/projects/galaxy/tools/cba/config/secret.cfg")
     SERVICE_PASSWORD = private_config["CORE LIMS"]["service password"]
     ROOT_DIR = public_config["CORE LIMS"]["root_dir"]   
     
@@ -317,7 +331,7 @@ def main():
     publishedBool = False
     unpublishedBool = False
     inactiveBool = False
-    summaryBool = False
+    summaryBool = True
     f_from_test_date = ''
     f_to_test_date = ''
     
@@ -329,13 +343,13 @@ def main():
         for opt in args.options.split(","):
             publishedBool = True if opt == 'p' else publishedBool
             inactiveBool = True if opt == 'i' else inactiveBool
-            summaryBool = True if opt == 's' else summaryBool
             unpublishedBool = True if opt == 'u' else unpublishedBool
     
-    cbbList = returnList(args.batch) if args.batch else []
-    requestList = returnList(args.request) if args.request else []
+    komp_customer_id_ls = returnList(args.komp_customer_id) if args.komp_customer_id else []
+    komp_sample_ls = returnList(args.komp_sample) if args.komp_sample else []
     templateList = returnList(args.experiment) if args.experiment else []
-    jaxstrainLs = returnList(args.jaxstrain) if args.jaxstrain else [] 
+    jaxstrain_ls = returnList(args.jaxstrain) if args.jaxstrain else [] 
+    experiment_barcode_ls = returnList(args.experiment_barcode) if args.experiment_barcode else []  
     
     # Format the dates
     if args.from_test_date:
@@ -352,7 +366,7 @@ def main():
         # Only body weight for now
         body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD)
     else:
-        report_data = fetch_report(cbbList,requestList, 
+        report_data = fetch_report(komp_customer_id_ls,komp_sample_ls, 
                  templateList, 
                  f_from_test_date, 
                  f_to_test_date, 
@@ -360,7 +374,8 @@ def main():
                  unpublishedBool, 
                  inactiveBool, 
                  summaryBool, 
-                 jaxstrainLs)
+                 jaxstrain_ls,
+                 experiment_barcode_ls)
                 
     return
    

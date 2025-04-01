@@ -54,7 +54,7 @@ class QueryHandler():
         # Get from config file
         public_config = configparser.ConfigParser()
         # /projects/galaxy/tools/cba
-        public_config.read("./config/setup.cfg")
+        public_config.read("/projects/galaxy/tools/cba/config/setup.cfg")
         tenant = public_config["CORE LIMS"]["tenant"]
         
         self.queryBase = tenant
@@ -564,7 +564,7 @@ class BatchBarcodeRequestHandler(QueryHandler):
 
         # Currenty getting all the batches for a particular experiment. We may narrow the list down later
         # templateList is a list of experiment names, e.g. CBA_BODY_WEIGHT_EXPERIMENT
-        self.baseExpansion = r"{0}_BATCH?$expand=REV_EXPERIMENT_BATCH_template_instance&$select=Barcode&$count=true".format(self.filter)
+        self.baseExpansion = r"{0}_BATCH?$expand=REV_EXPERIMENT_BATCH_template_instance&$filter=JAX_GROUPING_RECEIVEDNUMBER gt 0&$select=Barcode&$count=true".format(self.filter)
 
        
         # NOTE - THE FOLLOWING FILTERS ARE NOT CURRENTLY USED IN THIS CLASS BUT LEFT HERE IN CASE THAT CHANGES

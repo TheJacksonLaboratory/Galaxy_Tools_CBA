@@ -7,6 +7,9 @@ from datetime import datetime
 import pandas as pd
 import csv
 from io import BytesIO as IO
+import datetime
+import time
+
 """
     This module is used to generate a report of body weight data for the CBA.
     It also contains the functions that produce the data warehouse.
@@ -74,17 +77,17 @@ def fetch_report(cbbList,
     # Generate the report from the so-called data warehouse based on the commandline args.
     
     # Get the whole shebang then start removing rows that do not match the filter
-    dw_df = pd.read_csv(ROOT_DIR + '/data/CBA_BWT_raw_data.csv')
+    dw_df = pd.read_csv('/projects/galaxy/tools/cba/data/CBA_BWT_raw_data.csv')
 
     #Start with CBA_Request
     dw_df = filter(dw_df,"CBA_Request",requestList)
-    print(dw_df)
+    #print(dw_df)
     # Next Experiment
     dw_df = filter(dw_df,"ExperimentName",templateList)
-    print(dw_df)
+    #print(dw_df)
     # Next Batch
     dw_df = filter(dw_df,"CBA_Batch",cbbList)
-    print(dw_df)
+    #print(dw_df)
     
     # Next JAX Strain
     jaxstrainLs = [element for element in jaxstrainLs if len(element) > 0]
@@ -98,7 +101,7 @@ def fetch_report(cbbList,
         dw_df = dw_df[dw_df['Experiment_Date'] <= to_test_date] 
     # Write the data to a file
     dw_df.to_csv(sys.stdout,index=False)
-    dw_df.to_csv(ROOT_DIR + "/data/CBA_BWT.csv",index=False)
+    dw_df.to_csv("/projects/galaxy/tools/cba/data/CBA_BWT.csv",index=False)
     #write_to_excel(dw_df)
     return
 
@@ -163,7 +166,7 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
         # 'CBA_FEAR_CONDITIONING_EXPERIMENT',  No data -- but it looks like attribute exists. REV navigation issue exists
     'CBA_FRAILTY_EXPERIMENT',
         # 'CBA_GLUCOSE_CLAMPS_EXPERIMENT',  No data
-        # 'CBA_GLUCOSE_TOLERANCE_EXPERIMENT',  No REV_EXPERIMENT_BATCH_CBA_GLUCOSE_TOLERANCE_EXPERIMEN
+    'CBA_GLUCOSE_TOLERANCE_EXPERIMENT',
     'CBA_GRIP_STRENGTH_EXPERIMENT',  # No data
     'CBA_GTT_PLUS_INSULIN_EXPERIMENT',
     'CBA_HEART_WEIGHT_EXPERIMENT',  # No data! Why?
@@ -192,6 +195,7 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
         'Genotype',
         'Strain',
         'User_Defined_Strain_Name',
+        'Pen',
         'Primary_ID_Value',
         'Whole_Mouse_Fail',
         'Whole_Mouse_Fail_Reason',
@@ -218,32 +222,30 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
     
     try:
         # Open the file once
-        f = open(ROOT_DIR + "/data/CBA_BWT_raw_data.csv", 'w', encoding='utf-8') # The data warehouse is currently a CSV file
+        f = open('/projects/galaxy/tools/cba/data/CBA_BWT_raw_data.csv', 'w', encoding='utf-8') # The data warehouse is currently a CSV file
         # Write keep_columns as CSV header line
         csvwriter = csv.writer(f)
         csvwriter.writerow(keep_columns)
                 
+        batch_ls = []
         # Get the batch of experiments that have body weights - just once
-        if len(batch_ls) == 0:
-            for experiment in pertinent_experiments:
-                templateList =  [experiment]
-                # For each experiment get the batches 
-                # 1. Setup the query
+        for experiment in pertinent_experiments:
+            templateList =  [experiment]
+            if len(batch_ls) == 0:
                 newObj = runQuery.BatchBarcodeRequestHandler(cbbList, requestList, templateList, \
                     from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,'CBA') 
                 
                 # 2. get the batches   
                 tupleList = (newObj.controller())
                 
-                batch_ls = []
                 for my_tuple in tupleList:
                     barcode_ls = my_tuple['Barcode'] # Just want the barcode
                     for val in barcode_ls:
                         batch_ls.append(val)   
                 
-            # Pass in 5 batches at a time for the current experiment
+            # For each experiment Pass in 5 batches at a time for the current experiment
             lower = 0
-            upper = 5
+            upper = 15
             complete_response_ls = []
             while lower < len(batch_ls):
                 cbbList = batch_ls[lower:upper]
@@ -261,18 +263,17 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
                                 SERVICE_PASSWORD
                                 )
                 lower = upper
-                upper += 5
+                upper += 15
                 complete_response_ls.extend(tuple_ls)
-            
             # Get the last batch
             pd.set_option('display.max_columns', None)
             for my_tuple in complete_response_ls:
                 _,df = my_tuple  
                 df.insert(loc=0,column="ExperimentName",value=templateList[0])
-                print(df)
+                #print(df)
                 df = relevantColumnsOnly(keep_columns,df)
                 df.fillna('', inplace = True)
-                print(df)
+                #print(df)
                 df.to_csv(f,encoding='utf-8', errors='replace', index=False, header=False)
     
     except Exception as e:
@@ -320,13 +321,13 @@ def main():
    
     # Get credentials from the config file
     public_config = configparser.ConfigParser()
-    public_config.read("./config/setup.cfg")
+    public_config.read("/projects/galaxy/tools/cba/config/setup.cfg")
     SERVICE_USERNAME = public_config["CORE LIMS"]["service username"]
 
     private_config = configparser.ConfigParser()
-    private_config.read("./config/secret.cfg")
+    private_config.read("/projects/galaxy/tools/cba/config/secret.cfg")
     SERVICE_PASSWORD = private_config["CORE LIMS"]["service password"]
-    ROOT_DIR = public_config["CORE LIMS"]["root_dir"]   
+    #ROOT_DIR = public_config["CORE LIMS"]["root_dir"]   
     
     # Check if the user has access to CBA
     if not(has_core_access(args.user, SERVICE_USERNAME, SERVICE_PASSWORD)):
