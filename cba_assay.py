@@ -40,7 +40,7 @@ def meta_column_names():
         "EXPERIMENT.EXPERIMENT_ROOM.Name":"Procedure_Room",
         "EXPERIMENT.JAX_EXPERIMENT_STARTDATE": "Experiment_Date",
         "EXPERIMENT.JAX_EXPERIMENT_STATUS":"Experiment_Status", #added 11/7/2024 for KOMP
-        "EXPERIMENT.EXPERIMENT_TESTER.Name":"Tester_Name",
+        "EXPERIMENT.EXPERIMENT_TESTER.Name":"Default_Tester_Name",
         #"EXPERIMENT.EXPERIMENT_TESTER.Barcode":"Tester_Name_Barcode", #testing for Caroline 11/9/2023
     #ASSAY ATTRIBUTES IN COMMON
         "ASSAY_DATA.Barcode":"Experiment_Barcode",
