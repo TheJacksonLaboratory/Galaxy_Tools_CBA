@@ -5,6 +5,11 @@ def load_file():
         j = json.load(f)
     return j
 
+def load_mice_file():
+    with open('/projects/galaxy/tools/cba/cba_lists.txt', 'r') as f:
+        j = json.load(f)
+    return j
+
 def get_experiment_fields():
     j = load_file()
     experiment_values = [(value, value, 0) for value in j['CBA_EXPERIMENTS']]
@@ -21,6 +26,12 @@ def get_batch_fields():
 def get_line_fields():
     j = load_file()
     line_values = [(value, value, 0) for value in j['CBA_LINE_LIST']]
+    line_values.insert(0,("","",0))
+    return line_values
+
+def get_mice_fields():
+    j = load_file()
+    line_values = [(value, value, 0) for value in j['CBA_MICE_LIST']]
     line_values.insert(0,("","",0))
     return line_values
 

@@ -3,6 +3,7 @@ import os
 import sys
 import json
 from runQuery import QueryHandler
+import pandas as pd
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,12 +26,21 @@ CBA_BATCH_LIST = query.runQuery(query.queryBase + "CBA_BATCH?$count=true")["Barc
 CBA_EXPERIMENTS = query.get_experiments()
 CBA_EXPERIMENTS.remove('CBA_CAGE_SPLITTING_EXPERIMENT') # cage experiment is not a typical experiment
 
+df = pd.read_csv('/projects/galaxy/tools/cba/data/CBA_BWT_raw_data.csv')
+series_ls = df['Samples']
+series_ls = series_ls.astype(str)
+item_ls = series_ls.to_list()
+CBA_MICE_LIST = list(set(item_ls))   
+CBA_MICE_LIST.sort()
+
+
 odata = {}
 
 odata['CBA_LINE_LIST'] = CBA_LINE_LIST
 odata['CBA_REQUEST_LIST'] = CBA_REQUEST_LIST
 odata['CBA_BATCH_LIST'] = CBA_BATCH_LIST
 odata['CBA_EXPERIMENTS'] = CBA_EXPERIMENTS
+odata['CBA_MICE_LIST'] = CBA_MICE_LIST
 
 with open('cba_lists.txt', 'w') as outfile:
     json.dump(odata, outfile)

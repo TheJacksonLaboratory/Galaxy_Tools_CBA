@@ -20,23 +20,49 @@ def filter(df_list,column_name,filter_list):
 
 
 def test():
-# Read a csv file into a dataframe
-    df1 = pd.read_csv('data/BIG_ASS_raw_data.csv')        
 
-    # Filter dataframe by column CBA_Batch
-    column_name= 'CBA_Batch'
-    filter_list = ["CBB615","CBB63","CBB75"]
-    df2 = filter(df1,column_name,filter_list)
+    # KOMP BWT LOVs
+    keep_columns = [
+        "ExperimentName",
+		"Sample",
+		"Customer_Mouse_ID",
+        "Body_Weight_(g)",
+        "Age",
+		"Experiment_Date",
+		"Sex",
+		"Genotype",
+		"Strain_Name",
+		"Strain",
+		"Experiment_Barcode",
+		"Experiment_Status",
+		"Pen",
+		"Bedding",
+		"Diet",
+		"Additional_Notes",
+		"Primary_ID",
+		"Primary_ID_Value",
+		"Date_of_Birth",
+		"Exit Reason",
+		"Whole_Mouse_Fail",
+		"Whole_Mouse_Fail_Reason",
+		"Experiment",
+		"Protocol_Name",
+		"Tester_Name",
+        ]
+    df = pd.read_csv('/projects/galaxy/tools/cba/data/KOMP_BWT_raw_data.csv')
+    # Re-order the columns
     
-    filter_list.clear()
-    filter_list = ["CBA_NMR_BODY_COMPOSITION_EXPERIMENT"]
-    df2 = filter(df2,"ExperimentName",filter_list)
+    # Subtract column Date_of_Birth  from Experiment_Date  and add it to the dataframe
+    df['Experiment_Date'] = pd.to_datetime(df['Experiment_Date'])
+    df['Date_of_Birth'] = pd.to_datetime(df['Date_of_Birth'])
+    df['Age'] = df['Experiment_Date'] - df['Date_of_Birth']
+    df['Age'] = df['Age'].dt.days / 7
     
-    filter_list.clear()
-    filter_list = ["HOM"]
-    df2 = filter(df2,"Genotype",filter_list)
+    df = df[keep_columns]
+    df = df.sort_values(by=['Sample','Age'],ascending=True)
+    f = open("/projects/galaxy/tools/cba/data/re_ordered.csv", 'w', encoding='utf-8')
+    df.to_csv(f,encoding='utf-8', errors='replace', index=False, header=True)
     
-    df2.to_csv("data/test-results.csv")
 
 
 def main():
@@ -52,7 +78,7 @@ def main():
     
 
 if __name__ == "__main__":
-    main()
+    test()
 
 #cookies_dict = {'JSESSIONID': 'ABCDEF012346789'}
 #response = requests.get('http://httpbin.org/cookies', cookies=cookies_dict)

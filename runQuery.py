@@ -564,7 +564,7 @@ class BatchBarcodeRequestHandler(QueryHandler):
 
         # Currenty getting all the batches for a particular experiment. We may narrow the list down later
         # templateList is a list of experiment names, e.g. CBA_BODY_WEIGHT_EXPERIMENT
-        self.baseExpansion = r"{0}_BATCH?$expand=REV_EXPERIMENT_BATCH_template_instance&$filter=JAX_GROUPING_RECEIVEDNUMBER gt 0&$select=Barcode&$count=true".format(self.filter)
+        self.baseExpansion = r"{0}_BATCH?$filter=JAX_GROUPING_RECEIVEDNUMBER gt 0&$select=Barcode&$count=true".format(self.filter)
 
        
         # NOTE - THE FOLLOWING FILTERS ARE NOT CURRENTLY USED IN THIS CLASS BUT LEFT HERE IN CASE THAT CHANGES
