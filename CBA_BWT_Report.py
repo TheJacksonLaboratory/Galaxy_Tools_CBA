@@ -104,7 +104,7 @@ def fetch_report(cbbList,
     
     # Write the data to a file
     dw_df.to_csv(sys.stdout,index=False)
-    dw_df.to_csv("/projects/galaxy/tools/cba/data/CBA_BWT.csv",index=False)
+    #dw_df.to_csv("/projects/galaxy/tools/cba/data/CBA_BWT.csv",index=False)
     #write_to_excel(dw_df)
     return
 
@@ -169,10 +169,10 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
         # 'CBA_FEAR_CONDITIONING_EXPERIMENT',  No data -- but it looks like attribute exists. REV navigation issue exists
         'CBA_FRAILTY_EXPERIMENT',
         # 'CBA_GLUCOSE_CLAMPS_EXPERIMENT',  No data
-    #'CBA_GLUCOSE_TOLERANCE_EXPERIMENT', Waiting for edits
+        'CBA_GLUCOSE_TOLERANCE_TEST_EXPERIMENT',
         'CBA_GRIP_STRENGTH_EXPERIMENT',  # No data
         'CBA_GTT_PLUS_INSULIN_EXPERIMENT',
-    'CBA_HEART_WEIGHT_EXPERIMENT',  # No data! Why?
+        'CBA_HEART_WEIGHT_EXPERIMENT',  # No data! Why?
         'CBA_INDIRECT_CALORIMETRY_24H_FAST_REFEED_EXPERIMENT',
         'CBA_INSULIN_TOLERANCE_TEST_EXPERIMENT',
         'CBA_INTRAOCULAR_PRESSURE_EXPERIMENT',
@@ -182,8 +182,8 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
         'CBA_NMR_BODY_COMPOSITION_EXPERIMENT',
         # 'CBA_NON-INVASIVE_BLOOD_PRESSURE_EXPERIMENT', Dash in name may be an issue!
         'CBA_PIEZO_5_DAY_EXPERIMENT',  # No BODYWEIGHT but JAX_ASSAY_PIEZO_PREWEIGHT and JAX_ASSAY_PIEZO_POSTWEIGHT. How do we get batch lists?
-    'CBA_PIEZOELECTRIC_SLEEP_MONITOR_SYSTEM_EXPERIMENT', # JAX_ASSAY_PIEZO_PREWEIGHT, JAX_ASSAY_PIEZO_POSTWEIGHT. How do we get batch lists?
-    'CBA_PYRUVATE_TOLERANCE_TEST_EXPERIMENT',
+        'CBA_PIEZOELECTRIC_SLEEP_MONITOR_SYSTEM_EXPERIMENT', # JAX_ASSAY_PIEZO_PREWEIGHT, JAX_ASSAY_PIEZO_POSTWEIGHT. How do we get batch lists?
+        'CBA_PYRUVATE_TOLERANCE_TEST_EXPERIMENT',
         'CBA_UNCONSCIOUS_ELECTROCARDIOGRAM_EXPERIMENT'
         # 'CBA_VOLUNTARY_RUNNING_WHEELS_EXPERIMENT' "JAX_ASSAY_BODYWEIGHT_STARTDAY": null, "JAX_ASSAY_BODYWEIGHT_ENDDAY": null,
     ]
