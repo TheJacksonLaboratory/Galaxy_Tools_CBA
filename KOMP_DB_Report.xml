@@ -1,0 +1,31 @@
+<tool id="KOMP DB Report" name="KOMP DB Report" version="0.0.1">
+    <description>Pulls a report from the data warehouse</description>
+    <command interpreter="/projects/galaxy/tools/cba/p3env/bin/python3">
+    KOMP_DB_Report.py -r $komp_sample -b $komp_customer_id -e $experiment -x $experiment_barcode -f $from_test_date -t $to_test_date -o $options -j $line -u $__user_email__ > $out_file2 
+    </command>
+
+    <code file="komp_form.py" />
+    <inputs>
+        <param format="txt" name="komp_sample" multiple="true" value="" type="select" label="KOMP Mice (MUS)" dynamic_options="get_bwt_sample_fields()"/>
+        <param format="txt" name="komp_customer_id" multiple="true" value="" type="select" label="KOMP Customer ID" dynamic_options="get_bwt_customer_name_fields()" />
+        <param format="txt" name="experiment" multiple="true" type="select" value=""  label="Experiment Name" dynamic_options="get_bwt_experiment_fields()" />
+        <param format="txt" name="experiment_barcode" multiple="true" type="select" value=""  label="Experiment Barcode" dynamic_options="get_bwt_experimentbc_fields()" />
+        <param format="txt" name="line" multiple="true" type="select" value=""  label="Line" dynamic_options="get_bwt_line_fields()" />
+        <param format="txt" name="from_test_date" type="text" label="From Test Date *05-29-2012" />
+        <param format="txt" name="to_test_date" type="text" label="To Test Date *05-29-2020" />	
+        <param name="options" type="select" label="Get" multiple="true" display="checkboxes">
+            <option value="i">Include Inactive:</option>
+        </param>
+    </inputs>
+	
+    <outputs>
+        <data name="out_file2" format="csv" metadata_source="input1"/>
+    </outputs>
+
+    <help>
+
+**What it does**
+Produces a report of body weights for certain KOMP experiments/assays.
+
+</help>
+</tool>
