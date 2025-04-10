@@ -97,7 +97,7 @@ def fetch_report(komp_customer_id_ls,
     
     # Write the data to a file
     dw_df.to_csv(sys.stdout,index=False)
-    dw_df.to_csv("/projects/galaxy/tools/cba/data/KOMP_BWT.csv",index=False)
+    #dw_df.to_csv("/projects/galaxy/tools/cba/data/KOMP_BWT.csv",index=False)
     #write_to_excel(dw_df)
     return
 
