@@ -27,7 +27,7 @@ CBA_EXPERIMENTS = query.get_experiments()
 CBA_EXPERIMENTS.remove('CBA_CAGE_SPLITTING_EXPERIMENT') # cage experiment is not a typical experiment
 
 df = pd.read_csv('/projects/galaxy/tools/cba/data/CBA_BWT_raw_data.csv')
-series_ls = df['Samples']
+series_ls = df['Sample']
 series_ls = series_ls.astype(str)
 item_ls = series_ls.to_list()
 CBA_MICE_LIST = list(set(item_ls))   
