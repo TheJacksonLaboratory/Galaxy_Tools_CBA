@@ -132,8 +132,8 @@ def get_experiments(cbbList,
     
 def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_PASSWORD):
     
-    connection = create_database(f"/projects/galaxy/tools/cba/data/{source}-warehouse.db")
-    
+    connection = create_database(f"/projects/galaxy/tools/cba/data/{source}-warehouse-test.db")
+    impertinent_experiments = ['KOMP_STARTLE_PPI_EXPERIMENT']
     # Filters
     requestList = []        
     cbbList = []
@@ -145,7 +145,7 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
     summaryBool = True      # Unused
     jaxstrain = '' # Unused
     templateList = []
-    templateList.append(pertinent_experiments[0]) # Just need some value to get the batches. Let's go with body weight
+    templateList.append(impertinent_experiments[0]) # Just need some value to get the batches. Let's go with body weight
     try:
         batch_ls = []
         queryObj = runQuery.BatchBarcodeRequestHandler(cbbList, requestList, templateList, \
@@ -159,9 +159,9 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
                         batch_ls.append(val)   
                 
                 
-        for experiment in pertinent_experiments:
+        for experiment in impertinent_experiments:
             formatted_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(experiment + ": " + formatted_time)
+            #print(experiment + ": " + formatted_time)
             
             # Trying at the experiment level    
             templateList = [experiment]  # Can't handle multiple templates in this version of the code  
@@ -186,21 +186,21 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
                                 )
                 lower = upper
                 upper += 15
-                print("      Number of responses from this request: " + str(len(tuple_ls)))
+                #print("      Number of responses from this request: " + str(len(tuple_ls)))
                 complete_response_ls.extend(tuple_ls)
                 
                 formatted_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                print(experiment + ": " + formatted_time)
+                #print(experiment + ": " + formatted_time)
             #pd.set_option('display.max_columns', None)
             
-            print("      Total of responses: " + str(len(complete_response_ls)))
+            #print("      Total of responses: " + str(len(complete_response_ls)))
             for my_tuple in complete_response_ls:
                 _,df = my_tuple  
                 df.insert(loc=0,column="ExperimentName",value=templateList[0])
                 df.fillna('', inplace = True)
                 
                 try:
-                    print("          Number of rows in dataframe: " + str(df.shape[0]))
+                    print(templateList[0] + ": Number of rows in dataframe: " + str(df.shape[0]))
                     df.to_sql(templateList[0], connection, if_exists='append', index=False)
                 except Exception as e:
                     print(e)
@@ -216,7 +216,7 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
 def main():
     usernme = getpass.getuser()
     print("User: " + usernme)
-    source = 'CBA'
+    source = 'KOMP'
     
     
     if source == 'CBA':

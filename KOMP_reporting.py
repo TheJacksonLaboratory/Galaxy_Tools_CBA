@@ -79,7 +79,7 @@ def main():
 def has_komp_access(user, service_username, service_password):
     has_komp_access = False
     check_access_query = runQuery.QueryHandler(service_username, service_password)
-    employee_string = f"EMPLOYEE?&expand=PROJECT&$filter=contains(CI_USERNAME, '{user.lower()}') and PROJECT/any(a:a/Name eq 'Center for Biometric Analysis')"
+    employee_string = f"EMPLOYEE?&expand=PROJECT&$filter=contains(CI_USERNAME, '{user.lower()}') and PROJECT/any(a:a/Name eq 'Center for Biometric Analysis' or a/Name eq 'Knockout Mouse Project')"
     result_data = check_access_query.runQuery(check_access_query.queryBase + employee_string, 'xml')
     json_data = json.loads(result_data)
     if len(json_data['value']) > 0:
