@@ -2773,7 +2773,7 @@ def meta_column_names():
             "ASSAY_DATA.IMPC_CSD_014_001":"Coat-hair_texture/appearance-back",
             "ASSAY_DATA.IMPC_CSD_014_001_QC":"Coat-hair_texture/appearance-back_QC_Fail",
             "ASSAY_DATA.IMPC_CSD_015_001":"Coat-hair_texture/appearance-head",
-            "ASSAY_DATA.IMPC_CSD_015_001_QC":"Coat-hair_texture/appearance-head",
+            "ASSAY_DATA.IMPC_CSD_015_001_QC":"Coat-hair_texture/appearance-head_QC_Fail", # Needed QC
             "ASSAY_DATA.IMPC_CSD_016_001":"Coat-hair_texture/appearance-abdomen",
             "ASSAY_DATA.IMPC_CSD_016_001_QC":"Coat-hair_texture/appearance-abdomen_QC_Fail",
             "ASSAY_DATA.IMPC_CSD_017_001":"Forelimbs-position",
@@ -2913,9 +2913,9 @@ def meta_column_names():
             "ASSAY_DATA.IMPC_ACS_008_001_QC":"PP2_S_vmax_QC_Fail",
             "ASSAY_DATA.JAX_ASSAY_CORRECTED_PP2_VMAX":"Corrected_PP2_vmax",
             "ASSAY_DATA.JAX_ASSAY_CORRECTED_PP2_VMAX_QC":"Corrected_PP2_vmax_QC_Fail",
-            "ASSAY_DATA.IMPC_ACS_004_001":"PP3_S_vmax",
-            "ASSAY_DATA.IMPC_ACS_004_001_QC":"PP3_S_vmax_QC_Fail",
-            "ASSAY_DATA.IMPC_ACS_009_001":"PP3_S_vmax",
+            "ASSAY_DATA.IMPC_ACS_004_001":"PP3_vmax",  # 	Response amplitude - PP3
+            "ASSAY_DATA.IMPC_ACS_004_001_QC":"PP3_vmax_QC_Fail",
+            "ASSAY_DATA.IMPC_ACS_009_001":"PP3_S_vmax",  # Response amplitude - PP3_S 
             "ASSAY_DATA.IMPC_ACS_009_001_QC":"PP3_S_vmax_QC_Fail",
             "ASSAY_DATA.JAX_ASSAY_CORRECTED_PP3_VMAX":"Corrected_PP3_vmax",
             "ASSAY_DATA.JAX_ASSAY_CORRECTED_PP3_VMAX_QC":"Corrected_PP3_vmax_QC_Fail",
