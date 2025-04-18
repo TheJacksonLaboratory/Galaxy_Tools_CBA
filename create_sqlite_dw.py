@@ -1,8 +1,9 @@
 import sqlite3
 import pandas as pd
-import getpass   
+import sys
+import os       
 import runQuery
-import datetime
+from datetime import datetime, timedelta
 
 
 connection = None
@@ -114,13 +115,14 @@ def get_experiments(cbbList,
                           inactiveBool, 
                           summaryBool, 
                           jaxstrain, 
+                          my_filter,
                           source,
                           SERVICE_USERNAME, 
                           SERVICE_PASSWORD
                           ):   
     try:    
         newObj = runQuery.CBAAssayHandler(cbbList, requestList, templateList, \
-            from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,source) 
+            from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,my_filter,source) 
             
         tupleList = (newObj.controller())
         return tupleList
@@ -132,8 +134,7 @@ def get_experiments(cbbList,
     
 def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_PASSWORD):
     
-    connection = create_database(f"/projects/galaxy/tools/cba/data/{source}-warehouse-test.db")
-    impertinent_experiments = ['KOMP_STARTLE_PPI_EXPERIMENT']
+    connection = create_database(f"/projects/galaxy/tools/cba/data/{source}-warehouse.db")
     # Filters
     requestList = []        
     cbbList = []
@@ -145,31 +146,33 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
     summaryBool = True      # Unused
     jaxstrain = '' # Unused
     templateList = []
-    templateList.append(impertinent_experiments[0]) # Just need some value to get the batches. Let's go with body weight
+    templateList.append(pertinent_experiments[0]) # Just need some value to get the batches. Let's go with body weight
     try:
-        batch_ls = []
-        queryObj = runQuery.BatchBarcodeRequestHandler(cbbList, requestList, templateList, \
-                    from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,source) 
-                
-        # Get the batches   
-        tupleList = (queryObj.controller())
-        for my_tuple in tupleList:
-                    barcode_ls = my_tuple['Barcode'] # Just want the barcode
-                    for val in barcode_ls:
-                        batch_ls.append(val)   
-                
-                
-        for experiment in impertinent_experiments:
-            formatted_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            #print(experiment + ": " + formatted_time)
+        
+        # Dates are experiment CREATE DATEs
+        epoch_date = None
+        if source == 'CBA':
+            epoch_date =  datetime(2019, 10, 1)  # CBA epoch
+        else:
+            epoch_date =  datetime(2024, 3, 1) # The KOMP epoch 
             
-            # Trying at the experiment level    
+            
+        current_date = datetime.now()
+        create_from_test_date = epoch_date
+        create_to_test_date = epoch_date + timedelta(days=120) # 4 months later
+                
+        for experiment in pertinent_experiments:
+            create_from_test_date = epoch_date
+            create_to_test_date = epoch_date + timedelta(days=120) # 4 months later
+            formatted_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # For debugging...
+            
             templateList = [experiment]  # Can't handle multiple templates in this version of the code  
-            lower = 0
-            upper = 15
             complete_response_ls = []
-            while lower < len(batch_ls):
-                cbbList = batch_ls[lower:upper]  
+            print(experiment + "  " + formatted_time)
+            
+            while create_to_test_date <=  current_date: 
+                my_filter = f" Created ge {datetime.strftime(create_from_test_date, '%Y-%m-%dT%H:%M:%SZ')} and Created le {datetime.strftime(create_to_test_date, '%Y-%m-%dT%H:%M:%SZ')}"
+               
                 tuple_ls = get_experiments(cbbList, 
                                 requestList, 
                                 templateList, 
@@ -180,20 +183,17 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
                                 inactiveBool, 
                                 summaryBool, 
                                 jaxstrain, 
+                                my_filter,
                                 source,
                                 SERVICE_USERNAME, 
                                 SERVICE_PASSWORD
                                 )
-                lower = upper
-                upper += 15
-                #print("      Number of responses from this request: " + str(len(tuple_ls)))
+                print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                 complete_response_ls.extend(tuple_ls)
+                create_from_test_date = create_to_test_date + timedelta(days=1) # Start the next batch at the day after the last one
+                create_to_test_date = create_to_test_date + timedelta(days=120) # ~4 months later
                 
-                formatted_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                #print(experiment + ": " + formatted_time)
-            #pd.set_option('display.max_columns', None)
-            
-            #print("      Total of responses: " + str(len(complete_response_ls)))
+            print("      Total of responses: " + str(len(complete_response_ls)))
             for my_tuple in complete_response_ls:
                 _,df = my_tuple  
                 df.insert(loc=0,column="ExperimentName",value=templateList[0])
@@ -214,20 +214,16 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
 
     
 def main():
-    usernme = getpass.getuser()
-    print("User: " + usernme)
-    source = 'KOMP'
-    
-    
+    # Get arg c from command line 
+   
+    source = sys.argv[1]  
     if source == 'CBA':
-        build_data_warehouse(source,cba_pertinent_experiments,'svc-corePFS@jax.org', 'hRbP&6K&(Qvw')
+        build_data_warehouse('CBA',cba_pertinent_experiments,'svc-corePFS@jax.org', 'hRbP&6K&(Qvw')
     elif source == 'KOMP':
-        build_data_warehouse(source, komp_pertinent_experiments,'svc-corePFS@jax.org', 'hRbP&6K&(Qvw')
+        build_data_warehouse('KOMP',komp_pertinent_experiments,'svc-corePFS@jax.org', 'hRbP&6K&(Qvw')
     else:
-        print("Please specify a source: CBA or KOMP")
+        print("Please specify either CBA or KOMP")
         return
-    # Create the SQLite database and table
-
 
 
 if __name__ == "__main__":

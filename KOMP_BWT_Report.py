@@ -3,10 +3,13 @@ import runQuery
 import sys
 import configparser  
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import csv
 from io import BytesIO as IO
+import pandas as pd
+import sqlite3
+
 """
     This module is used to generate a report of body weight data for the KOMP Project.
     It also contains the functions that produce the data warehouse.
@@ -24,18 +27,41 @@ from io import BytesIO as IO
 """
 ROOT_DIR = '.'
 
-
-# Stanard function to check if a user has access to the CBA
-def has_core_access(user, service_username, service_password):
-    has_komp_access = False
-    check_access_query = runQuery.QueryHandler(service_username, service_password)
-    employee_string = f"EMPLOYEE?&expand=PROJECT&$filter=contains(CI_USERNAME, '{user.lower()}') and PROJECT/any(a:a/Name eq 'Center for Biometric Analysis')"
-    result_data = check_access_query.runQuery(check_access_query.queryBase + employee_string, 'xml')
-    json_data = json.loads(result_data)
-    if len(json_data['value']) > 0:
-        has_komp_access = True
-    return has_komp_access
-
+pertinent_experiments = [
+    'KOMP_BODY_WEIGHT_EXPERIMENT',
+    'KOMP_GRIP_STRENGTH_EXPERIMENT',
+    'KOMP_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT',
+    'KOMP_BODY_COMPOSITION_EXPERIMENT',
+    'KOMP_GLUCOSE_TOLERANCE_TEST_EXPERIMENT',
+    'KOMP_HEART_WEIGHT_EXPERIMENT']
+    
+    # The columns that will be available in the data warehouse
+keep_columns = [
+    "ExperimentName",
+    "Sample",
+    "Customer_Mouse_ID",
+    "Body_Weight_(g)",
+    "Pen",
+    "Sex",
+    "Genotype",
+    "Strain_Name",
+    "Strain",
+    "Bedding",
+    "Diet",
+    "Additional_Notes",
+    "Primary_ID",
+    "Primary_ID_Value",
+    "Date_of_Birth",
+    "Exit Reason",
+    "Whole_Mouse_Fail",
+    "Whole_Mouse_Fail_Reason",
+    "Experiment",
+    "Experiment_Date",
+    "Experiment_Status",
+    "Protocol_Name",
+    "Tester_Name",
+    "Experiment_Barcode"]
+        
 
 # Turn a comma separated list on the command into a python list
 def returnList(pList):
@@ -126,6 +152,7 @@ def write_to_excel(df):
     sys.stdout.buffer.write(excel_file.getbuffer())
     return
 
+    
 # User has specified the "w" option. Build the data warehouse
 def build_data_warehouse(cbbList, 
                           requestList, 
@@ -137,57 +164,22 @@ def build_data_warehouse(cbbList,
                           inactiveBool, 
                           summaryBool, 
                           jaxstrain, 
+                          m_filter,
                           SERVICE_USERNAME, 
                           SERVICE_PASSWORD
                           ):   
     try:    
         newObj = runQuery.CBAAssayHandler(cbbList, requestList, templateList, \
-            from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,'KOMP') 
+            from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,m_filter,'KOMP') 
             
         tupleList = (newObj.controller())
         return tupleList
     except Exception as e:
         print(e)
-        return None
-  
+        return []
+
 def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
-    # For each pertinent experiment 1) get the batches and then 2) get the body weight data.
-    pertinent_experiments = [
-    'KOMP_BODY_WEIGHT_EXPERIMENT',
-    'KOMP_GRIP_STRENGTH_EXPERIMENT',
-    'KOMP_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT',
-    'KOMP_BODY_COMPOSITION_EXPERIMENT',
-    'KOMP_GLUCOSE_TOLERANCE_TEST_EXPERIMENT',
-    'KOMP_HEART_WEIGHT_EXPERIMENT']
-    
-    # The columns that will be available in the data warehouse
-    keep_columns = [
-        "ExperimentName",
-		"Sample",
-		"Customer_Mouse_ID",
-        "Body_Weight_(g)",
-		"Pen",
-		"Sex",
-		"Genotype",
-		"Strain_Name",
-		"Strain",
-		"Bedding",
-		"Diet",
-		"Additional_Notes",
-		"Primary_ID",
-		"Primary_ID_Value",
-		"Date_of_Birth",
-		"Exit Reason",
-		"Whole_Mouse_Fail",
-		"Whole_Mouse_Fail_Reason",
-		"Experiment",
-		"Experiment_Date",
-		"Experiment_Status",
-		"Protocol_Name",
-		"Tester_Name",
-		"Experiment_Barcode"]
-        
-    # Initialize the variables
+    # Initialize the filter variables
     requestList = []        
     cbbList = '' 
     from_test_date = ''
@@ -197,7 +189,7 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
     inactiveBool = False    # Unused
     summaryBool = True      # Unused
     jaxstrain = ''          # Unused
-    batch_ls = []
+    
     try:
         # Open the file once
         f = open("/projects/galaxy/tools/cba/data/KOMP_BWT_raw_data.csv", 'w', encoding='utf-8') # The data warehouse is currently a CSV file
@@ -206,46 +198,43 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
         age = ["Age"]
         # Add Age to the header row
         csvwriter.writerow(keep_columns[0:4] + age + keep_columns[4:]) # Add the age column to the header
-                
-        # Get the batch of experiments that have body weights - just once
-        if len(batch_ls) == 0:
-            templateList =  [pertinent_experiments[0]]
-            # For each experiment get the batches 
-            # 1. Setup the query
-            newObj = runQuery.BatchBarcodeRequestHandler(cbbList, requestList, templateList, \
-                from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,'KOMP') 
-            
-            # 2. get the batches   
-            tupleList = (newObj.controller())
-            
-            for my_tuple in tupleList:
-                barcode_ls = my_tuple['Barcode'] # Just want the barcode
-                for val in barcode_ls:
-                    batch_ls.append(val)   
-                
-        # Pass in 5 batches at a time for the current experiment
+        
+        # Dates are experiment START DATEs
+        epoch_date =  datetime(2024, 3, 1) # The KOMP epoch  
+        current_date = datetime.now()
+        
+        
+    #EXPERIMENT/pfs.{experiment}/JAX_EXPERIMENT_STATUS eq 'Data Sent to DCC' and 
+    # Created ge  2024-04-01T00:00:00Z and Created le  2024-05-01T00:00:00Z 
+
+        # Start at the KOMP epoch and loop to the curent date 4 months at a time
         for experiment in pertinent_experiments:
+            
             templateList = [experiment] # Consider just passing the whole list instead of one at a time
-            lower = 0
-            upper = 5
             complete_response_ls = []
-            while lower < len(batch_ls):
-                cbbList = batch_ls[lower:upper]
+            create_from_test_date = epoch_date
+            create_to_test_date = epoch_date + timedelta(days=120) # 4 months later
+
+            while create_to_test_date <=  current_date:
+                my_filter = f" Created ge {datetime.strftime(create_from_test_date, '%Y-%m-%dT%H:%M:%SZ')} and Created le {datetime.strftime(create_to_test_date, '%Y-%m-%dT%H:%M:%SZ')}"
+                print(my_filter)
                 tuple_ls = build_data_warehouse(cbbList, 
                                 requestList, 
                                 templateList, 
-                                from_test_date, 
-                                to_test_date, 
+                                from_test_date,
+                                to_test_date,
                                 publishedBool, 
                                 unpublishedBool, 
                                 inactiveBool, 
                                 summaryBool, 
                                 jaxstrain, 
+                                my_filter,
                                 SERVICE_USERNAME, 
                                 SERVICE_PASSWORD
                                 )
-                lower = upper
-                upper += 5
+                
+                create_from_test_date = create_to_test_date + timedelta(days=1) # Start the next batch at the day after the last one
+                create_to_test_date = create_to_test_date + timedelta(days=120) # ~4 months later
                 complete_response_ls.extend(tuple_ls)
             
             # Get the last batch
@@ -263,7 +252,6 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
                 df['Date_of_Birth'] = pd.to_datetime(df['Date_of_Birth'])
                 # Compute the age
                 df.insert(loc=4,column="Age",value=df['Experiment_Date'] - df['Date_of_Birth'])
-                #df['Age'] = df['Experiment_Date'] - df['Date_of_Birth']
                 df['Age'] = df['Age'].dt.days / 7
                 # Organize them
                 df = df.sort_values(by=['Sample','Age'],ascending=True)
@@ -275,9 +263,57 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
         f.close()    
     return 
 
+
+def body_weight_data_warehouse_from_dw(SERVICE_USERNAME, SERVICE_PASSWORD):
+    # For each pertinent experiment 1) get the batches and then 2) get the body weight data.
+    
+    try:
+        # Open the file once
+        f = open("/projects/galaxy/tools/cba/data/KOMP_BWT_raw_data.csv", 'w', encoding='utf-8') # The data warehouse is currently a CSV file
+        # Write keep_columns as CSV header line
+        csvwriter = csv.writer(f)
+        age = ["Age"]
+        # Add Age to the header row
+        csvwriter.writerow(keep_columns[0:4] + age + keep_columns[4:]) # Add the age column to the header
+
+        for experiment in pertinent_experiments:
+            templateList = [experiment] # Consider just passing the whole list instead of one at a time
+            
+            # Open the SQLite db
+            # Get * FROM the table in a dataframe 
+            connection = sqlite3.connect('/projects/galaxy/tools/cba/data/KOMP-warehouse.db')
+            # Get the data from the database
+            query = f"SELECT * FROM {experiment}"
+            df = pd.read_sql_query(query, connection)
+            connection.close()
+            
+            # Remove unwanted columns and ensure we have the ones we need
+            df = relevantColumnsOnly(keep_columns,df)
+            df.fillna('', inplace = True)
+            # Re-order the columns
+            df = df[keep_columns]
+            # Some special formating
+            df['Experiment_Date'] = pd.to_datetime(df['Experiment_Date'])
+            df['Date_of_Birth'] = pd.to_datetime(df['Date_of_Birth'])
+            # Compute the age
+            df.insert(loc=4,column="Age",value=df['Experiment_Date'] - df['Date_of_Birth'])
+            df['Age'] = df['Age'].dt.days / 7
+            # Organize them
+            df = df.sort_values(by=['Sample','Age'],ascending=True)
+            df.to_csv(f,encoding='utf-8', errors='replace', index=False, header=False)
+
+    except Exception as e:
+        print(e)    
+    finally:
+        f.close()    
+    return 
+
+
 # Clean up the dataframe by removing columns that are not in the keep_columns list, 
 # add the ones that need to be there, and change any name that is non-standard.
 def relevantColumnsOnly(keep_columns,df): 
+    pd.set_option('display.max_columns', None)
+    print(df)
     # 1. Change the column names that don't match keep_columns but are to be kept,eg JAX_ASSAY_PIEZO_PREWEIGHT
     change_names = {"Total_Tissue_Mass_(g)": "Body_Weight_(g)", "Pre-weight_(g)": "Body_Weight_(g)" }
     for key in change_names:
@@ -323,10 +359,6 @@ def main():
     SERVICE_PASSWORD = private_config["CORE LIMS"]["service password"]
     ROOT_DIR = public_config["CORE LIMS"]["root_dir"]   
     
-    # Check if the user has access to CBA
-    if not(has_core_access(args.user, SERVICE_USERNAME, SERVICE_PASSWORD)):
-        raise Exception("User %s does not have access to CBA" % args.user) 
-
     # Initialize the variables
     publishedBool = False
     unpublishedBool = False
@@ -364,7 +396,7 @@ def main():
         
     if build_data_warehouse == True:
         # Only body weight for now
-        body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD)
+        body_weight_data_warehouse_from_dw(SERVICE_USERNAME, SERVICE_PASSWORD)
     else:
         report_data = fetch_report(komp_customer_id_ls,komp_sample_ls, 
                  templateList, 

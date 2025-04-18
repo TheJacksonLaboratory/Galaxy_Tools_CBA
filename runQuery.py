@@ -250,11 +250,18 @@ CLASS : CBAAssayHandler
 """
 class CBAAssayHandler(QueryHandler):
     
-    def __init__(self, cbbList, requestList, templateList, fromDate, toDate, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, email, password,coreFilter=None):
+    def __init__(self, cbbList, requestList, templateList, fromDate, toDate, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, email, password,userFilter=None,coreFilter=None):
         QueryHandler.__init__(self, email, password,coreFilter)
 
         # using template_instance as a literal that must be replaced with the actual experiment name before running
         # I took out "",EXPERIMENT_ROOM" after  "EXPERIMENT_TESTER" - may need to add it back for CBA
+        instrument_entity = ',EXPERIMENT_INSTRUMENT' if self.filter == 'CBA' else ''
+        
+        self.baseExpansion = r"?$count=true&$expand=EXPERIMENT/pfs.template_instance($expand=EXPERIMENT_PROTOCOL,EXPERIMENT_TESTER{1})," \
+                            r"ENTITY/pfs.MOUSE_SAMPLE_LOT" \
+                            r"($expand=SAMPLE/pfs.MOUSE_SAMPLE($expand=MOUSESAMPLE_STRAIN,MOUSESAMPLE_MOUSE)," \
+                            r"MOUSESAMPLELOT_{0}BATCH($expand=BATCH_{0}REQUEST))".format(self.filter,instrument_entity)
+
         self.baseExpansion = r"?$count=true&$expand=EXPERIMENT/pfs.template_instance($expand=EXPERIMENT_PROTOCOL,EXPERIMENT_TESTER)," \
                             r"ENTITY/pfs.MOUSE_SAMPLE_LOT" \
                             r"($expand=SAMPLE/pfs.MOUSE_SAMPLE($expand=MOUSESAMPLE_STRAIN,MOUSESAMPLE_MOUSE)," \
@@ -271,6 +278,10 @@ class CBAAssayHandler(QueryHandler):
         # these are additonal criteria that are added to the request, batch or experiment values
         self.fromdateInitFilter = r"EXPERIMENT/pfs.template_instance/JAX_EXPERIMENT_STARTDATE ge "
         self.todateInitFilter = r"EXPERIMENT/pfs.template_instance/JAX_EXPERIMENT_STARTDATE le "
+		
+        # these are additonal criteria that are added to the request, batch or experiment values
+        self.fromcreatedateInitFilter = r"EXPERIMENT/pfs.template_instance/JAX_EXPERIMENT_STARTDATE ge "
+        self.tocreatedateInitFilter = r"EXPERIMENT/pfs.template_instance/JAX_EXPERIMENT_STARTDATE le "
 		
         self.publInitFilter = r"EXPERIMENT/pfs.template_instance/PUBLISHED eq True"
         self.unpublInitFilter = r"EXPERIMENT/pfs.template_instance/PUBLISHED eq False"
@@ -292,6 +303,8 @@ class CBAAssayHandler(QueryHandler):
         self.inactive = inactiveBool
         self.summary = summaryBool
         self.jaxstrain = jaxstrain
+        self.userFilter = userFilter
+        
 
     
     def getExperimentList(self):
@@ -470,6 +483,13 @@ class CBAAssayHandler(QueryHandler):
                 filters += r"$filter=(" + self.activeFilter  + ")"
                 append = True
 
+        if self.userFilter:
+            if append:
+                filters += r" and (" + self.userFilter  + ")"
+            else:
+                filters += r"$filter=(" + self.userFilter  + ")"
+                append = True
+        
         # Do I have the value of jaxstrain at this point?
         """
         if self.jaxstrain:
@@ -489,7 +509,7 @@ class CBAAssayHandler(QueryHandler):
         xlwriter = pd.ExcelWriter(excel_file, engine='xlsxwriter')
 
         for df in dfList: 
-            df[1].to_excel(xlwriter, str(df[0])[:30])
+            df[1].to_excel(xlwriter, sheet_name=str(df[0])[:30],index=False)
 
             workbook = xlwriter.book
             worksheet = xlwriter.sheets[str(df[0])[:30]]
@@ -564,7 +584,8 @@ class BatchBarcodeRequestHandler(QueryHandler):
 
         # Currenty getting all the batches for a particular experiment. We may narrow the list down later
         # templateList is a list of experiment names, e.g. CBA_BODY_WEIGHT_EXPERIMENT
-        self.baseExpansion = r"{0}_BATCH?$filter=JAX_GROUPING_RECEIVEDNUMBER gt 0&$select=Barcode&$count=true".format(self.filter)
+        #self.baseExpansion = r"{0}_BATCH?$filter=JAX_GROUPING_RECEIVEDNUMBER gt 0&$select=Barcode&$count=true".format(self.filter)
+        self.baseExpansion = r"{0}_BATCH?$count=true".format(self.filter)
 
        
         # NOTE - THE FOLLOWING FILTERS ARE NOT CURRENTLY USED IN THIS CLASS BUT LEFT HERE IN CASE THAT CHANGES

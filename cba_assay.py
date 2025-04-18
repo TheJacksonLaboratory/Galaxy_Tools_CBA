@@ -20,7 +20,7 @@ def meta_column_names():
         "ENTITY.SAMPLE.JAX_MOUSESAMPLE_DIETGRAINTYPE":"Diet",
         "ENTITY.SAMPLE.JAX_MOUSESAMPLE_ADDITIONALINFORMATION":"Additional_Notes",
         "ENTITY.SAMPLE.JAX_MOUSESAMPLE_COATCOLOR":"Coat_Color",
-        "ENTITY.SAMPLE.JAX_SAMPLE_EXTERNALID":"Experiment_Customer_Mouse_ID",
+        "ENTITY.SAMPLE.JAX_SAMPLE_EXTERNALID":"Customer_Mouse_ID", # 4/11/2025 MMcF /undid 4/14/25 djp
         "ENTITY.SAMPLE.JAX_MOUSESAMPLE_PRIMARYID":"Primary_ID",
         "ENTITY.SAMPLE.JAX_MOUSESAMPLE_PRIMARYIDVALUE":"Primary_ID_Value",
         "ENTITY.SAMPLE.JAX_MOUSESAMPLE_SECONDARYID":"Secondary_ID",
@@ -40,7 +40,8 @@ def meta_column_names():
         "EXPERIMENT.EXPERIMENT_ROOM.Name":"Procedure_Room",
         "EXPERIMENT.JAX_EXPERIMENT_STARTDATE": "Experiment_Date",
         "EXPERIMENT.JAX_EXPERIMENT_STATUS":"Experiment_Status", #added 11/7/2024 for KOMP
-        "EXPERIMENT.EXPERIMENT_TESTER.Name":"Default_Tester_Name",
+        "EXPERIMENT.EXPERIMENT_TESTER.Name":"Default_Tester_Name",# 4/11/2025 MMcF
+        "EXPERIMENT.EXPERIMENT_INSTRUMENT.Name":"Balance", #3/4/2/2025 djp                                                                 
         #"EXPERIMENT.EXPERIMENT_TESTER.Barcode":"Tester_Name_Barcode", #testing for Caroline 11/9/2023
     #ASSAY ATTRIBUTES IN COMMON
         "ASSAY_DATA.Barcode":"Experiment_Barcode",
@@ -58,7 +59,7 @@ def meta_column_names():
             "ASSAY_DATA.JAX_ASSAY_BODY_WEIGHT_G_QC":"Body_Weight_QC",
             "ASSAY_DATA.JAX_ASSAY_COMMENT":"Comments",
             "ASSAY_DATA.JAX_ASSAY_COMMENTS":"Comments",
-            "ASSAY_DATA.JAX_ASSAY_EXTERNALID":"Customer_Mouse_ID",
+            "ASSAY_DATA.JAX_ASSAY_EXTERNALID":"Experiment_Customer_Mouse_ID", #4/14/2025 djp - resolved conflict with JAX_SAMPLE_EXTERNALID":"Customer_Mouse_ID"
             "ASSAY_DATA.JAX_ASSAY_ENDDATE":"End_Date",
             "ASSAY_DATA.JAX_ASSAY_EYE":"Eye",
             "ASSAY_DATA.JAX_ASSAY_NOTES":"Comments",
@@ -1985,7 +1986,6 @@ def meta_column_names():
             "ASSAY_DATA.JAX_ASSAY_30KHZMINTHRESHOLD_QC":"30kHz_QC_Fail",
     #PCP - CBA BASIC ECHOCARDIOGRAPHY ASSAY
         "ASSAY_DATA.JAX_ASSAY_EF_SAX_PERCENT":"EF_SAX_M-Mode_(%)",
-          #  "ASSAY_DATA.JAX_ASSAY_EXTERNALID":"External_ID", Changed default for all assays to "Customer_Mouse_ID"
             "ASSAY_DATA.JAX_ASSAY_FS_SAX_PERCENT":"FS_SAX_M-Mode_(%)",
             "ASSAY_DATA.JAX_ASSAY_HR_BPM":"Heart_Rate_(bpm)",
             "ASSAY_DATA.JAX_ASSAY_LVAW_D_MM":"LVAW;d_Depth_SAX_M-Mode_(mm)",
@@ -3019,6 +3019,9 @@ def meta_column_order():
         "EXPERIMENT.EXPERIMENT_PROTOCOL.Name",
         "EXPERIMENT.EXPERIMENT_TESTER.Name",
         #"EXPERIMENT.EXPERIMENT_TESTER.Barcode", #11/9/2023
+        "EXPERIMENT.EXPERIMENT_ROOM.Name", #3/4/2/2025 djp
+        "EXPERIMENT.EXPERIMENT_INSTRUMENT.Name", #3/4/2/2025 djp   
+        "EXPERIMENT.EXPERIMENT_INSTRUMENT.Barcode",  #testing djp  4/15/2025
         "ASSAY_DATA.JAX_ASSAY_AGE",
         "ASSAY_DATA.JAX_ASSAY_TESTORDER"
     ]
@@ -4586,7 +4589,7 @@ def assay_columns(experiment):
         "KOMP_SHIRPA_DYSMORPHOLOGY":[
             "ASSAY_DATA.Barcode",
             "ASSAY_DATA.JAX_ASSAY_TEST_DATE",
-            "ASSAY_DATA.JAX_ASSAY_TESTER"
+            "ASSAY_DATA.JAX_ASSAY_TESTER",
             "ASSAY_DATA.IMPC_CSD_083_001",
             "ASSAY_DATA.IMPC_CSD_032_001",
             "ASSAY_DATA.IMPC_CSD_032_001_QC",

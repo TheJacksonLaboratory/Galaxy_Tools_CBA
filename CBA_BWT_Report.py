@@ -3,8 +3,9 @@ import runQuery
 import sys
 import configparser  
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
+import sqlite3
 import csv
 from io import BytesIO as IO
 
@@ -26,6 +27,61 @@ from io import BytesIO as IO
 """
 ROOT_DIR = '.'
 
+pertinent_experiments = [
+        'CBA_BODY_WEIGHT_EXPERIMENT',
+        'CBA_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT',
+        'CBA_BASELINE_GLUCOSE_EXPERIMENT',
+        'CBA_DEXA_EXPERIMENT',
+        'CBA_BASIC_ECHOCARDIOGRAPHY_EXPERIMENT',
+        # 'CBA_FEAR_CONDITIONING_EXPERIMENT',  No data -- but it looks like attribute exists. REV navigation issue exists
+        'CBA_FRAILTY_EXPERIMENT',
+        # 'CBA_GLUCOSE_CLAMPS_EXPERIMENT',  No data
+        'CBA_GLUCOSE_TOLERANCE_TEST_EXPERIMENT',
+        'CBA_GRIP_STRENGTH_EXPERIMENT',  # No data
+        'CBA_GTT_PLUS_INSULIN_EXPERIMENT',
+        'CBA_HEART_WEIGHT_EXPERIMENT',  # No data! Why?
+        'CBA_INDIRECT_CALORIMETRY_24H_FAST_REFEED_EXPERIMENT',
+        'CBA_INSULIN_TOLERANCE_TEST_EXPERIMENT',
+        'CBA_INTRAOCULAR_PRESSURE_EXPERIMENT',
+        # 'CBA_MAGNETIC_RESONANCE_IMAGING_EXPERIMENT',  No Data
+        # 'CBA_MICRO_CT_EXPERIMENT',  Data but No BWTs i.e "JAX_ASSAY_BODYWEIGHT": null,
+        'CBA_MMTT_PLUS_HORMONE_EXPERIMENT',
+        'CBA_NMR_BODY_COMPOSITION_EXPERIMENT',
+        # 'CBA_NON-INVASIVE_BLOOD_PRESSURE_EXPERIMENT', Dash in name may be an issue!
+        'CBA_PIEZO_5_DAY_EXPERIMENT',  # No BODYWEIGHT but JAX_ASSAY_PIEZO_PREWEIGHT and JAX_ASSAY_PIEZO_POSTWEIGHT. How do we get batch lists?
+        'CBA_PIEZOELECTRIC_SLEEP_MONITOR_SYSTEM_EXPERIMENT', # JAX_ASSAY_PIEZO_PREWEIGHT, JAX_ASSAY_PIEZO_POSTWEIGHT. How do we get batch lists?
+        'CBA_PYRUVATE_TOLERANCE_TEST_EXPERIMENT',
+        'CBA_UNCONSCIOUS_ELECTROCARDIOGRAM_EXPERIMENT'
+        # 'CBA_VOLUNTARY_RUNNING_WHEELS_EXPERIMENT' "JAX_ASSAY_BODYWEIGHT_STARTDAY": null, "JAX_ASSAY_BODYWEIGHT_ENDDAY": null,
+    ]
+    
+    # The columns that will be available in the data warehouse
+keep_columns = [
+    'ExperimentName',
+    'CBA_Request',
+    'CBA_Batch',
+    'Sample',
+    'Pen',
+    'Sex',
+    'Genotype',
+    'Strain',
+    'User_Defined_Strain_Name',
+    'Primary_ID',
+    'Primary_ID_Value',
+    'Balance',
+    'Whole_Mouse_Fail',
+    'Whole_Mouse_Fail_Reason',
+    'Experiment',
+    'Experiment_Date',
+    'Tester_Name',
+    'Age_(wks)',
+    'Experiment_Barcode',
+    'Body_Weight_(g)',
+    'Body_Weight_QC',
+    'Entire_Assay_Fail_Reason',
+    'Entire_Assay_Fail_Comments']
+        
+        
 
 # Stanard function to check if a user has access to the CBA
 def has_core_access(user, service_username, service_password):
@@ -144,12 +200,13 @@ def build_data_warehouse(cbbList,
                           inactiveBool, 
                           summaryBool, 
                           jaxstrain, 
+                          my_filter,
                           SERVICE_USERNAME, 
                           SERVICE_PASSWORD
                           ):   
     try:    
         newObj = runQuery.CBAAssayHandler(cbbList, requestList, templateList, \
-            from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,'CBA') 
+            from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,my_filter,'CBA') 
             
         tupleList = (newObj.controller())
         return tupleList
@@ -160,59 +217,7 @@ def build_data_warehouse(cbbList,
 def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
     # For each pertinent experiment 1) get the batches and then 2) get the body weight data.
     # pertinent_experiments = ['CBA_FEAR_CONDITIONING_EXPERIMENT']  # DEBUG
-    pertinent_experiments = [
-        'CBA_BODY_WEIGHT_EXPERIMENT',
-        'CBA_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT',
-        'CBA_BASELINE_GLUCOSE_EXPERIMENT',
-        'CBA_DEXA_EXPERIMENT',
-        'CBA_BASIC_ECHOCARDIOGRAPHY_EXPERIMENT',
-        # 'CBA_FEAR_CONDITIONING_EXPERIMENT',  No data -- but it looks like attribute exists. REV navigation issue exists
-        'CBA_FRAILTY_EXPERIMENT',
-        # 'CBA_GLUCOSE_CLAMPS_EXPERIMENT',  No data
-        'CBA_GLUCOSE_TOLERANCE_TEST_EXPERIMENT',
-        'CBA_GRIP_STRENGTH_EXPERIMENT',  # No data
-        'CBA_GTT_PLUS_INSULIN_EXPERIMENT',
-        'CBA_HEART_WEIGHT_EXPERIMENT',  # No data! Why?
-        'CBA_INDIRECT_CALORIMETRY_24H_FAST_REFEED_EXPERIMENT',
-        'CBA_INSULIN_TOLERANCE_TEST_EXPERIMENT',
-        'CBA_INTRAOCULAR_PRESSURE_EXPERIMENT',
-        # 'CBA_MAGNETIC_RESONANCE_IMAGING_EXPERIMENT',  No Data
-        # 'CBA_MICRO_CT_EXPERIMENT',  Data but No BWTs i.e "JAX_ASSAY_BODYWEIGHT": null,
-        'CBA_MMTT_PLUS_HORMONE_EXPERIMENT',
-        'CBA_NMR_BODY_COMPOSITION_EXPERIMENT',
-        # 'CBA_NON-INVASIVE_BLOOD_PRESSURE_EXPERIMENT', Dash in name may be an issue!
-        'CBA_PIEZO_5_DAY_EXPERIMENT',  # No BODYWEIGHT but JAX_ASSAY_PIEZO_PREWEIGHT and JAX_ASSAY_PIEZO_POSTWEIGHT. How do we get batch lists?
-        'CBA_PIEZOELECTRIC_SLEEP_MONITOR_SYSTEM_EXPERIMENT', # JAX_ASSAY_PIEZO_PREWEIGHT, JAX_ASSAY_PIEZO_POSTWEIGHT. How do we get batch lists?
-        'CBA_PYRUVATE_TOLERANCE_TEST_EXPERIMENT',
-        'CBA_UNCONSCIOUS_ELECTROCARDIOGRAM_EXPERIMENT'
-        # 'CBA_VOLUNTARY_RUNNING_WHEELS_EXPERIMENT' "JAX_ASSAY_BODYWEIGHT_STARTDAY": null, "JAX_ASSAY_BODYWEIGHT_ENDDAY": null,
-    ]
     
-    # The columns that will be available in the data warehouse
-    keep_columns = [
-        'ExperimentName',
-        'CBA_Request',
-        'CBA_Batch',
-        'Sample',
-        'Pen',
-        'Sex',
-        'Genotype',
-        'Strain',
-        'User_Defined_Strain_Name',
-        "Primary_ID",
-        'Primary_ID_Value',
-        'Whole_Mouse_Fail',
-        'Whole_Mouse_Fail_Reason',
-        'Experiment',
-        'Experiment_Date',
-        'Tester_Name',
-        'Age_(wks)',
-        'Experiment_Barcode',
-        'Body_Weight_(g)',
-        'Body_Weight_QC',
-        'Entire_Assay_Fail_Reason',
-        'Entire_Assay_Fail_Comments']
-        
     # Initialize the variables
     requestList =   []    
     cbbList = '' 
@@ -223,7 +228,7 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
     inactiveBool = False    # Unused
     summaryBool = True      # Unused
     jaxstrain = ''          # Unused
-    templateList =  ['CBA_BODY_WEIGHT_EXPERIMENT'] 
+    
     try:
         # Open the file once
         f = open('/projects/galaxy/tools/cba/data/CBA_BWT_raw_data.csv', 'w', encoding='utf-8') # The data warehouse is currently a CSV file
@@ -231,45 +236,41 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
         csvwriter = csv.writer(f)
         csvwriter.writerow(keep_columns)
                 
-        batch_ls = []
-        newObj = runQuery.BatchBarcodeRequestHandler(cbbList, requestList, templateList, \
-                    from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,'CBA') 
-                
-                # 2. get the batches   
-        tupleList = (newObj.controller())
-        for my_tuple in tupleList:
-                    barcode_ls = my_tuple['Barcode'] # Just want the barcode
-                    for val in barcode_ls:
-                        batch_ls.append(val)   
-                
-                
+        # Dates are experiment CREATE DATEs
+        epoch_date =  datetime(2019, 7, 1)
+        current_date = datetime.now()
+        create_from_test_date = epoch_date
+        create_to_test_date = epoch_date + timedelta(days=120) # 4 months later
+        
         # Get the batch of experiments that have body weights - just once
         for experiment in pertinent_experiments:
-            templateList =  [experiment]
-
-            # For each experiment Pass in 5 batches at a time for the current experiment
-            lower = 0
-            upper = 20
+            templateList = [experiment] # Consider just passing the whole list instead of one at a time
             complete_response_ls = []
-            while lower < len(batch_ls):
-                cbbList = batch_ls[lower:upper]
+            create_from_test_date = epoch_date
+            create_to_test_date = epoch_date + timedelta(days=120) # 4 months later
+
+            while create_from_test_date <=  current_date:
+                my_filter = f" Created ge {datetime.strftime(create_from_test_date, '%Y-%m-%dT%H:%M:%SZ')} and Created le {datetime.strftime(create_to_test_date, '%Y-%m-%dT%H:%M:%SZ')}"
+                print(my_filter)
                 tuple_ls = build_data_warehouse(cbbList, 
                                 requestList, 
                                 templateList, 
                                 from_test_date, 
-                                to_test_date, 
+                                to_test_date,
                                 publishedBool, 
                                 unpublishedBool, 
                                 inactiveBool, 
                                 summaryBool, 
                                 jaxstrain, 
+                                my_filter,
                                 SERVICE_USERNAME, 
                                 SERVICE_PASSWORD
                                 )
-                lower = upper
-                upper += 20
-                complete_response_ls.extend(tuple_ls)
                 
+                create_from_test_date = create_to_test_date + timedelta(days=1) # Start the next batch at the day after the last one
+                create_to_test_date = create_to_test_date + timedelta(days=120) # ~4 months later
+                complete_response_ls.extend(tuple_ls)
+            
             # Get the last batch
             pd.set_option('display.max_columns', None)
             for my_tuple in complete_response_ls:
@@ -281,6 +282,39 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
                 #print(df)
                 df = df[keep_columns]
                 df.to_csv(f,encoding='utf-8', errors='replace', index=False, header=False)
+    
+    except Exception as e:
+        print(e)    
+    finally:
+        f.close()    
+    return 
+def body_weight_data_warehouse_dw(SERVICE_USERNAME, SERVICE_PASSWORD):
+    try:
+        # Open the file once
+        f = open('/projects/galaxy/tools/cba/data/CBA_BWT_raw_data.csv', 'w', encoding='utf-8') # The data warehouse is currently a CSV file
+        # Write keep_columns as CSV header line
+        csvwriter = csv.writer(f)
+        csvwriter.writerow(keep_columns)
+           
+        # Get the batch of experiments that have body weights - just once
+        for experiment in pertinent_experiments:
+            # Open the SQLite db
+            # Get * FROM the table in a dataframe 
+            try:
+                connection = sqlite3.connect('/projects/galaxy/tools/cba/data/CBA-warehouse.db')
+                # Get the data from the database
+                query = f"SELECT * FROM {experiment}"
+                df = pd.read_sql_query(query, connection)
+                connection.close()
+            except Exception as e:
+                print(e)
+                continue
+            
+            df = relevantColumnsOnly(keep_columns,df)
+            df.fillna('', inplace = True)
+        
+            df = df[keep_columns]
+            df.to_csv(f,encoding='utf-8', errors='replace', index=False, header=False)
     
     except Exception as e:
         print(e)    
@@ -337,8 +371,8 @@ def main():
     #ROOT_DIR = public_config["CORE LIMS"]["root_dir"]   
     
     # Check if the user has access to CBA
-    if not(has_core_access(args.user, SERVICE_USERNAME, SERVICE_PASSWORD)):
-        raise Exception("User %s does not have access to CBA" % args.user) 
+    #if not(has_core_access(args.user, SERVICE_USERNAME, SERVICE_PASSWORD)):
+    #    raise Exception("User %s does not have access to CBA" % args.user) 
 
     # Initialize the variables
     publishedBool = False
@@ -378,7 +412,7 @@ def main():
         
     if build_data_warehouse == True:
         # Only body weight for now
-        body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD)
+        body_weight_data_warehouse_dw(SERVICE_USERNAME, SERVICE_PASSWORD)
     else:
         report_data = fetch_report(cbbList,requestList, 
                  templateList, 

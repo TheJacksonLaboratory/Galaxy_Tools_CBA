@@ -139,17 +139,13 @@ def main():
     args = parser.parse_args() 
     
     public_config = configparser.ConfigParser()
-    public_config.read("./config/setup.cfg")
+    public_config.read("/projects/galaxy/tools/cba/config/setup.cfg")
     SERVICE_USERNAME = public_config["CORE LIMS"]["service username"]
 
     private_config = configparser.ConfigParser()
-    private_config.read("./config/secret.cfg")
+    private_config.read("/projects/galaxy/tools/cba/config/secret.cfg")
     SERVICE_PASSWORD = private_config["CORE LIMS"]["service password"]
    
-
-    if not(has_cba_access(args.user, SERVICE_USERNAME, SERVICE_PASSWORD)):
-        raise Exception("User %s does not have access to CBA" % args.user) 
-
     cbbList = []    # CBA Batch
     f_from_test_date = ''
     f_to_test_date = ''
@@ -198,20 +194,9 @@ def main():
                 f_from_test_date, f_to_test_date, publishedBool, unpublishedBool, inactiveBool, \
                 summaryBool, jaxstrainList, 'svc-corePFS@jax.org', 'hRbP&6K&(Qvw','CBA')   # TODO - Get from config file
     		
-    dfList = (newObj.controller())
     data = newObj.writeFile(dfList)
     sys.stdout.buffer.write(data.getbuffer())
 
-def has_cba_access(user, service_username, service_password):
-    has_cba_access = False
-    check_access_query = runQuery.QueryHandler(service_username, service_password)
-    employee_string = f"EMPLOYEE?&expand=PROJECT&$filter=contains(CI_USERNAME, '{user.lower()}') and PROJECT/any(a:a/Name eq 'Center for Biometric Analysis')"
-    result_data = check_access_query.runQuery(check_access_query.queryBase + employee_string, 'xml')
-    json_data = json.loads(result_data)
-    if len(json_data['value']) > 0:
-        has_cba_access = True
-    return has_cba_access
-   
 
 
 
