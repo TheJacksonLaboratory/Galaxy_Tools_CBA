@@ -14,9 +14,9 @@
         <param format="txt" name="line" multiple="true" type="select" value=""  label="Line" dynamic_options="get_bwt_line_fields()" />
         <param format="txt" name="from_test_date" type="text" label="From Test Date *05-29-2012" />
         <param format="txt" name="to_test_date" type="text" label="To Test Date *05-29-2020" />	
-        <param name="options" type="select" label="Get" multiple="true" display="checkboxes">
+        <!-- <param name="options" type="select" label="Get" multiple="true" display="checkboxes">
             <option value="i">Include Inactive:</option>
-        </param>
+        </param> -->
     </inputs>
 	
     <outputs>
