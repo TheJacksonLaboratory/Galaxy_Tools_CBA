@@ -236,7 +236,7 @@ def main():
     jaxstrain_ls = returnList(args.jaxstrain) if args.jaxstrain else [] 
     experiment_barcode_ls = returnList(args.experiment_barcode) if args.experiment_barcode else []  
     # Remove underscore from any items in the list. Replace with a space
-    args.experiment_status = args.experiment_status.replace('_',' ')
+    args.experiment_status = args.experiment_status.replace('_',' ') if args.experiment_status else []  
     experiment_status_ls = returnList(args.experiment_status) if args.experiment_status else []  
     
     # Format the dates

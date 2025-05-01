@@ -1,4 +1,4 @@
-<tool id="KOMP DB Report" name="KOMP Data Warehous Report" version="0.0.1">
+<tool id="KOMP DW Report" name="KOMP Data Warehouse Report" version="0.0.1">
     <description>Pulls a report from the data warehouse</description>
     <command interpreter="/projects/galaxy/tools/cba/p3env/bin/python3">
     KOMP_DW_Report.py -r $komp_sample -b $komp_customer_id -e $experiment -x $experiment_barcode -s $experiment_status -f $from_test_date -t $to_test_date -o $options -j $line -u $__user_email__ > $out_file2 

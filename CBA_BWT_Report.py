@@ -47,7 +47,7 @@ pertinent_experiments = [
         # 'CBA_MICRO_CT_EXPERIMENT',  Data but No BWTs i.e "JAX_ASSAY_BODYWEIGHT": null,
         'CBA_MMTT_PLUS_HORMONE_EXPERIMENT',
         'CBA_NMR_BODY_COMPOSITION_EXPERIMENT',
-        # 'CBA_NON-INVASIVE_BLOOD_PRESSURE_EXPERIMENT', Dash in name may be an issue!
+        'CBA_NON_NVASIVE_BLOOD_PRESSURE_EXPERIMENT',
         'CBA_PIEZO_5_DAY_EXPERIMENT',  # No BODYWEIGHT but JAX_ASSAY_PIEZO_PREWEIGHT and JAX_ASSAY_PIEZO_POSTWEIGHT. How do we get batch lists?
         'CBA_PIEZOELECTRIC_SLEEP_MONITOR_SYSTEM_EXPERIMENT', # JAX_ASSAY_PIEZO_PREWEIGHT, JAX_ASSAY_PIEZO_POSTWEIGHT. How do we get batch lists?
         'CBA_PYRUVATE_TOLERANCE_TEST_EXPERIMENT',
@@ -73,7 +73,7 @@ keep_columns = [
     'Whole_Mouse_Fail_Reason',
     'Experiment',
     'Experiment_Date',
-    'Tester_Name',
+    'Assay_Tester_Name',
     'Age_(wks)',
     'Experiment_Barcode',
     'Body_Weight_(g)',
