@@ -1,5 +1,6 @@
 from requests.auth import HTTPBasicAuth
 import requests
+from requests.exceptions import Timeout
 import json
 import collections
 import pandas as pd
@@ -90,7 +91,7 @@ class QueryHandler():
         query = queryString
         df = None
         try:
-            result = requests.get(query, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=12000"})      
+            result = requests.get(query, timeout=480, auth=my_auth,headers = {"Prefer": "odata.maxpagesize=12000"})      
 
             if result_format == 'xml':
                 return result.content  # We're done. Return what we got
@@ -133,6 +134,9 @@ class QueryHandler():
                         self.responses = []
                     df = pd.DataFrame(allJson)
                     return df
+        except Timeout as e:
+            print("\nTimeout occurred:" + repr(e) + " QUERY: " + query)
+            return None
         except Exception as e:
             print("\nException occurred:" + repr(e) + " QUERY: " + query)
             return None
@@ -260,13 +264,9 @@ class CBAAssayHandler(QueryHandler):
         self.baseExpansion = r"?$count=true&$expand=EXPERIMENT/pfs.template_instance($expand=EXPERIMENT_PROTOCOL,EXPERIMENT_TESTER{1})," \
                             r"ENTITY/pfs.MOUSE_SAMPLE_LOT" \
                             r"($expand=SAMPLE/pfs.MOUSE_SAMPLE($expand=MOUSESAMPLE_STRAIN,MOUSESAMPLE_MOUSE)," \
-                            r"MOUSESAMPLELOT_{0}BATCH($expand=BATCH_{0}REQUEST))".format(self.filter,instrument_entity)
+                            r"MOUSESAMPLELOT_{0}BATCH($expand=BATCH_{0}REQUEST))".format(self.filter,'')
 
-        self.baseExpansion = r"?$count=true&$expand=EXPERIMENT/pfs.template_instance($expand=EXPERIMENT_PROTOCOL,EXPERIMENT_TESTER)," \
-                            r"ENTITY/pfs.MOUSE_SAMPLE_LOT" \
-                            r"($expand=SAMPLE/pfs.MOUSE_SAMPLE($expand=MOUSESAMPLE_STRAIN,MOUSESAMPLE_MOUSE)," \
-                            r"MOUSESAMPLELOT_{0}BATCH($expand=BATCH_{0}REQUEST))".format(self.filter)
-
+    
         # ASSAY_DATA expand is added later because it depends on experiment name
 
         self.cbbInitFilter = r"$filter=(ENTITY/pfs.MOUSE_SAMPLE_LOT/MOUSESAMPLELOT_{0}BATCH/Barcode eq ".format(self.filter)
@@ -280,8 +280,8 @@ class CBAAssayHandler(QueryHandler):
         self.todateInitFilter = r"EXPERIMENT/pfs.template_instance/JAX_EXPERIMENT_STARTDATE le "
 		
         # these are additonal criteria that are added to the request, batch or experiment values
-        self.fromcreatedateInitFilter = r"EXPERIMENT/pfs.template_instance/JAX_EXPERIMENT_STARTDATE ge "
-        self.tocreatedateInitFilter = r"EXPERIMENT/pfs.template_instance/JAX_EXPERIMENT_STARTDATE le "
+        self.fromcreatedateInitFilter = r"EXPERIMENT/pfs.template_instance/Created ge "
+        self.tocreatedateInitFilter = r"EXPERIMENT/pfs.template_instance/Created le "
 		
         self.publInitFilter = r"EXPERIMENT/pfs.template_instance/PUBLISHED eq True"
         self.unpublInitFilter = r"EXPERIMENT/pfs.template_instance/PUBLISHED eq False"
@@ -570,7 +570,6 @@ class CBAAssayHandler(QueryHandler):
             print("\nException occurred:" + repr(e))
         finally:
             return resultDataFrameLs
-               
     
 """
 
