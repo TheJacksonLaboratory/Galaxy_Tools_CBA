@@ -7,32 +7,77 @@ from datetime import datetime, timedelta
 
 
 connection = None
+
+
 cba_pertinent_experiments = [
-    'CBA_BODY_WEIGHT_EXPERIMENT',
-        'CBA_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT',
+"CBA_2D_X_RAY_CRANIAL_FACIAL_EXPERIMENT",
+"CBA_2D_X_RAY_SKELETAL_EXPERIMENT",
+"CBA_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT",
+"CBA_BASELINE_GLUCOSE_EXPERIMENT",
+"CBA_BASIC_ECHOCARDIOGRAPHY_EXPERIMENT",
+"CBA_BODY_WEIGHT_EXPERIMENT",
+"CBA_DEXA_EXPERIMENT",
+"CBA_ELECTRORETINOGRAPHY_EXPERIMENT",
+"CBA_FEAR_CONDITIONING_EXPERIMENT",
+"CBA_FRAILTY_EXPERIMENT",
+"CBA_GLUCOSE_TOLERANCE_TEST_EXPERIMENT",
+"CBA_GRIP_STRENGTH_EXPERIMENT",
+"CBA_GROOMING_EXPERIMENT",
+"CBA_GROSS_MORPHOLOGY_EXPERIMENT",
+"CBA_GTT_PLUS_INSULIN_EXPERIMENT",
+"CBA_INDIRECT_CALORIMETRY_EXPERIMENT",
+"CBA_INDIRECT_CALORIMETRY_24H_FAST_REFEED_EXPERIMENT",
+"CBA_INSULIN_TOLERANCE_TEST_EXPERIMENT",
+"CBA_INTRAOCULAR_PRESSURE_EXPERIMENT",
+"CBA_LIGHT_DARK_BOX_EXPERIMENT",
+"CBA_MICRO_CT_EXPERIMENT",
+"CBA_NMR_BODY_COMPOSITION_EXPERIMENT",
+"CBA_NON_INVASIVE_BLOOD_PRESSURE_EXPERIMENT",
+"CBA_NOVEL_OBJECT_RECOGNITION_EXPERIMENT",
+"CBA_OPEN_FIELD_EXPERIMENT",
+"CBA_PIEZO_5_DAY_EXPERIMENT",
+"CBA_PYRUVATE_TOLERANCE_TEST_EXPERIMENT",
+"CBA_ROTAROD_EXPERIMENT",
+"CBA_SUBCUTANEOUS_TEMPERATURE_EXPERIMENT",
+"CBA_TAIL_SUSPENSION_TEST_EXPERIMENT",
+"CBA_TREADMILL_MEP_EXPERIMENT",
+"CBA_UNCONSCIOUS_ELECTROCARDIOGRAM_EXPERIMENT",
+"CBA_VISUAL_EVOKED_POTENTIAL_EXPERIMENT",
+"CBA_Y_MAZE_DELAYED_SPATIAL_RECOGNITION_EXPERIMENT",
+"CBA_Y_MAZE_SPONTANEOUS_ALTERNATION_EXPERIMENT"
+]
+
+cba_pertinent_experiments_test = [
+"CBA_PIEZO_5_DAY_EXPERIMENT",
+]
+
+cba_pertinent_experiments_old = [
+    'CBA_BODY_WEIGHT_EXPERIMENT',  # Has EXPERIMENT_INSTRUMENT 
+    'CBA_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT', # Has EXPERIMENT_INSTRUMENT
         'CBA_BASELINE_GLUCOSE_EXPERIMENT',
         'CBA_DEXA_EXPERIMENT',
-        'CBA_BASIC_ECHOCARDIOGRAPHY_EXPERIMENT',
+    'CBA_BASIC_ECHOCARDIOGRAPHY_EXPERIMENT',  # Has EXPERIMENT_INSTRUMENT
         'CBA_FEAR_CONDITIONING_EXPERIMENT',
         'CBA_FRAILTY_EXPERIMENT',
-        'CBA_GLUCOSE_CLAMPS_EXPERIMENT',
+            'CBA_GLUCOSE_CLAMPS_EXPERIMENT', # No records
         'CBA_GLUCOSE_TOLERANCE_TEST_EXPERIMENT',
         'CBA_GRIP_STRENGTH_EXPERIMENT', 
         'CBA_GTT_PLUS_INSULIN_EXPERIMENT',
-        'CBA_HEART_WEIGHT_EXPERIMENT',
-        'CBA_INDIRECT_CALORIMETRY_24H_FAST_REFEED_EXPERIMENT',
+            'CBA_HEART_WEIGHT_EXPERIMENT', # No records
+    'CBA_INDIRECT_CALORIMETRY_24H_FAST_REFEED_EXPERIMENT', # Has EXPERIMENT_INSTRUMENT
         'CBA_INSULIN_TOLERANCE_TEST_EXPERIMENT',
         'CBA_INTRAOCULAR_PRESSURE_EXPERIMENT',
-        'CBA_MAGNETIC_RESONANCE_IMAGING_EXPERIMENT',
-        'CBA_MICRO_CT_EXPERIMENT',
-        'CBA_MMTT_PLUS_HORMONE_EXPERIMENT',
+            'CBA_MAGNETIC_RESONANCE_IMAGING_EXPERIMENT', # No records
+    'CBA_MICRO_CT_EXPERIMENT',  # Has EXPERIMENT_INSTRUMENT
+            'CBA_MRI_BRAIN_EXPERIMENT', # No records
+            'CBA_MMTT_PLUS_HORMONE_EXPERIMENT', # No records
         'CBA_NMR_BODY_COMPOSITION_EXPERIMENT',
-        'CBA_NON-INVASIVE_BLOOD_PRESSURE_EXPERIMENT',
-        'CBA_PIEZO_5_DAY_EXPERIMENT',  
-        'CBA_PIEZOELECTRIC_SLEEP_MONITOR_SYSTEM_EXPERIMENT',
-        'CBA_PYRUVATE_TOLERANCE_TEST_EXPERIMENT',
-        'CBA_UNCONSCIOUS_ELECTROCARDIOGRAM_EXPERIMENT',
-        'CBA_VOLUNTARY_RUNNING_WHEELS_EXPERIMENT'
+    'CBA_NON_INVASIVE_BLOOD_PRESSURE_EXPERIMENT',# Has EXPERIMENT_INSTRUMENT
+    'CBA_PIEZO_5_DAY_EXPERIMENT',  # Has EXPERIMENT_INSTRUMENT
+            'CBA_PIEZOELECTRIC_SLEEP_MONITOR_SYSTEM_EXPERIMENT', # No records
+            'CBA_PYRUVATE_TOLERANCE_TEST_EXPERIMENT', # No records
+    'CBA_UNCONSCIOUS_ELECTROCARDIOGRAM_EXPERIMENT',  # Has EXPERIMENT_INSTRUMENT
+            'CBA_VOLUNTARY_RUNNING_WHEELS_EXPERIMENT' # No records
     ]
     
 komp_pertinent_experiments = [
@@ -146,15 +191,14 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
     summaryBool = True      # Unused
     jaxstrain = '' # Unused
     templateList = []
-    templateList.append(pertinent_experiments[0]) # Just need some value to get the batches. Let's go with body weight
     try:
         
         # Dates are experiment CREATE DATEs
         epoch_date = None
         if source == 'CBA':
-            epoch_date =  datetime(2019, 10, 1)  # CBA epoch
+            epoch_date =  datetime(2019, 1, 9)  # CBA epoch 1/9/2019
         else:
-            epoch_date =  datetime(2024, 3, 1) # The KOMP epoch 
+            epoch_date =  datetime(2024, 1, 1) # The KOMP epoch 
             
             
         current_date = datetime.now()
@@ -188,14 +232,23 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
                                 SERVICE_USERNAME, 
                                 SERVICE_PASSWORD
                                 )
-                print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                
+                print("Number of tuples:" + str(len(tuple_ls)) + ", " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                print("From test date:" + str(create_from_test_date) + ", To test date: " + str(create_to_test_date))
+                
                 complete_response_ls.extend(tuple_ls)
                 create_from_test_date = create_to_test_date + timedelta(days=1) # Start the next batch at the day after the last one
                 create_to_test_date = create_to_test_date + timedelta(days=120) # ~4 months later
                 
             print("      Total of responses: " + str(len(complete_response_ls)))
+            if table_exists(connection,templateList[0]):
+                drop_sql = f"DROP TABLE IF EXISTS  {templateList[0]}"
+                # Delete all rows from the table before inserting new data
+                connection.execute(drop_sql)
+            
             for my_tuple in complete_response_ls:
                 _,df = my_tuple  
+                #print(list(df.columns))
                 df.insert(loc=0,column="ExperimentName",value=templateList[0])
                 df.fillna('', inplace = True)
                 
@@ -211,12 +264,43 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
         close_db(connection)
     return 
 
+def table_exists(conn, table_name):
+    """
+    Checks if a table exists in a SQLite database.
 
+    Args:
+        conn: Open connection to the SQLite database file.
+        table_name (str): The name of the table to check.
+
+    Returns:
+        bool: True if the table exists, False otherwise.
+    """
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,)
+        )
+        result = cursor.fetchone()
+
+        return result is not None
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return False
+
+
+def create_sqlite_view(connection, view_name:str, table_name:str):
+    # Create a view in the SQLite database
+    cursor = connection.cursor()
+    cursor.execute(f'CREATE VIEW IF NOT EXISTS {view_name} AS SELECT * FROM {table_name}')
+    connection.commit()
+    cursor.close()
     
 def main():
     # Get arg c from command line 
    
     source = sys.argv[1]  
+    #source = 'CBA' # For testing purposes
     if source == 'CBA':
         build_data_warehouse('CBA',cba_pertinent_experiments,'svc-corePFS@jax.org', 'hRbP&6K&(Qvw')
     elif source == 'KOMP':
