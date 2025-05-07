@@ -25,7 +25,6 @@ import sqlite3
     Galaxy calls main() which parses the commandline arguments and then calls fetch_report()
     The warehouse builder calls body_weight_data_warehouse()
 """
-ROOT_DIR = '.'
 
 pertinent_experiments = [
     'KOMP_BODY_WEIGHT_EXPERIMENT',
@@ -59,7 +58,7 @@ keep_columns = [
     "Experiment_Date",
     "Experiment_Status",
     "Protocol_Name",
-    "Tester_Name",
+    "Assay_Tester_Name",
     "Experiment_Barcode"]
         
 
@@ -217,7 +216,7 @@ def body_weight_data_warehouse(SERVICE_USERNAME, SERVICE_PASSWORD):
 
             while create_to_test_date <=  current_date:
                 my_filter = f" Created ge {datetime.strftime(create_from_test_date, '%Y-%m-%dT%H:%M:%SZ')} and Created le {datetime.strftime(create_to_test_date, '%Y-%m-%dT%H:%M:%SZ')}"
-                print(my_filter)
+                
                 tuple_ls = build_data_warehouse(cbbList, 
                                 requestList, 
                                 templateList, 
@@ -312,8 +311,6 @@ def body_weight_data_warehouse_from_dw(SERVICE_USERNAME, SERVICE_PASSWORD):
 # Clean up the dataframe by removing columns that are not in the keep_columns list, 
 # add the ones that need to be there, and change any name that is non-standard.
 def relevantColumnsOnly(keep_columns,df): 
-    pd.set_option('display.max_columns', None)
-    print(df)
     # 1. Change the column names that don't match keep_columns but are to be kept,eg JAX_ASSAY_PIEZO_PREWEIGHT
     change_names = {"Total_Tissue_Mass_(g)": "Body_Weight_(g)", "Pre-weight_(g)": "Body_Weight_(g)" }
     for key in change_names:
@@ -357,7 +354,6 @@ def main():
     private_config = configparser.ConfigParser()
     private_config.read("/projects/galaxy/tools/cba/config/secret.cfg")
     SERVICE_PASSWORD = private_config["CORE LIMS"]["service password"]
-    ROOT_DIR = public_config["CORE LIMS"]["root_dir"]   
     
     # Initialize the variables
     publishedBool = False

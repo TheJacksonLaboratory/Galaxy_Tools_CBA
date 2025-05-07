@@ -4,7 +4,7 @@ import sys
 import os       
 import runQuery
 from datetime import datetime, timedelta
-
+import configparser
 
 connection = None
 
@@ -257,7 +257,8 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
                     df.to_sql(templateList[0], connection, if_exists='append', index=False)
                 except Exception as e:
                     print(e)
-                
+                    
+                 
     except Exception as e:
         print(e)     
     finally:
@@ -289,22 +290,146 @@ def table_exists(conn, table_name):
         return False
 
 
-def create_sqlite_view(connection, view_name:str, table_name:str):
+def create_sqlite_view(connection, source, view_name:str, sql:str):
     # Create a view in the SQLite database
+    connection = create_database(f"/projects/galaxy/tools/cba/data/{source}-warehouse.db")
     cursor = connection.cursor()
-    cursor.execute(f'CREATE VIEW IF NOT EXISTS {view_name} AS SELECT * FROM {table_name}')
+    cursor.execute(f'CREATE VIEW IF NOT EXISTS {view_name} AS {sql}')
     connection.commit()
-    cursor.close()
-    
+    cursor.close()  # Note the close() here
+    connection.close()  # Close the connection after creating the view
+
+def create_komp_strain_view():
+    komp_strains = """
+    SELECT DISTINCT Strain  FROM KOMP_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_BODY_COMPOSITION_EXPERIMENT
+    UNION 
+    SELECT DISTINCT Strain FROM KOMP_BODY_WEIGHT_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_CLINICAL_BLOOD_CHEMISTRY_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_ELECTROCARDIOGRAM_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_ELECTRORETINOGRAPHY_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_EYE_MORPHOLOGY_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_GLUCOSE_TOLERANCE_TEST_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_GRIP_STRENGTH_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_HEART_WEIGHT_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_HEMATOLOGY_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_HOLEBOARD_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_LIGHT_DARK_BOX_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_OPEN_FIELD_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_SHIRPA_DYSMORPHOLOGY_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_STARTLE_PPI_EXPERIMENT
+    """
+    create_sqlite_view(connection,'KOMP','vKompStrain',komp_strains)
+       
+def create_komp_strain_view():
+    komp_strains = """
+    SELECT DISTINCT Strain  FROM KOMP_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_BODY_COMPOSITION_EXPERIMENT
+    UNION 
+    SELECT DISTINCT Strain FROM KOMP_BODY_WEIGHT_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_CLINICAL_BLOOD_CHEMISTRY_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_ELECTROCARDIOGRAM_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_ELECTRORETINOGRAPHY_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_EYE_MORPHOLOGY_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_GLUCOSE_TOLERANCE_TEST_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_GRIP_STRENGTH_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_HEART_WEIGHT_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_HEMATOLOGY_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_HOLEBOARD_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_LIGHT_DARK_BOX_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_OPEN_FIELD_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_SHIRPA_DYSMORPHOLOGY_EXPERIMENT
+    UNION
+    SELECT DISTINCT Strain FROM KOMP_STARTLE_PPI_EXPERIMENT
+    """
+    create_sqlite_view(connection,'KOMP','vKompStrain',komp_strains)
+              
+def create_komp_experiment_view():
+    komp_exps = """
+    SELECT DISTINCT Experiment  FROM KOMP_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT
+    UNION
+    SELECT DISTINCT Experiment FROM KOMP_BODY_COMPOSITION_EXPERIMENT
+    UNION 
+    SELECT DISTINCT Experiment FROM KOMP_BODY_WEIGHT_EXPERIMENT
+    UNION
+    SELECT DISTINCT Experiment FROM KOMP_CLINICAL_BLOOD_CHEMISTRY_EXPERIMENT
+    UNION
+    SELECT DISTINCT Experiment FROM KOMP_ELECTROCARDIOGRAM_EXPERIMENT
+    UNION
+    SELECT DISTINCT Experiment FROM KOMP_ELECTRORETINOGRAPHY_EXPERIMENT
+    UNION
+    SELECT DISTINCT Experiment FROM KOMP_EYE_MORPHOLOGY_EXPERIMENT
+    UNION
+    SELECT DISTINCT Experiment FROM KOMP_GLUCOSE_TOLERANCE_TEST_EXPERIMENT
+    UNION
+    SELECT DISTINCT Experiment FROM KOMP_GRIP_STRENGTH_EXPERIMENT
+    UNION
+    SELECT DISTINCT Experiment FROM KOMP_HEART_WEIGHT_EXPERIMENT
+    UNION
+    SELECT DISTINCT Experiment FROM KOMP_HEMATOLOGY_EXPERIMENT
+    UNION
+    SELECT DISTINCT Experiment FROM KOMP_HOLEBOARD_EXPERIMENT
+    UNION
+    SELECT DISTINCT Experiment FROM KOMP_LIGHT_DARK_BOX_EXPERIMENT
+    UNION
+    SELECT DISTINCT Experiment FROM KOMP_OPEN_FIELD_EXPERIMENT
+    UNION
+    SELECT DISTINCT Experiment FROM KOMP_SHIRPA_DYSMORPHOLOGY_EXPERIMENT
+    UNION
+    SELECT DISTINCT Experiment FROM KOMP_STARTLE_PPI_EXPERIMENT
+    """
+    create_sqlite_view(connection,'KOMP','vKompExperiment',komp_exps)
+       
 def main():
     # Get arg c from command line 
-   
+    
+    public_config = configparser.ConfigParser()
+    public_config.read("/projects/galaxy/tools/cba/config/setup.cfg")
+    SERVICE_USERNAME = public_config["CORE LIMS"]["service username"]
+    
+    DATABASE_DIR = public_config["CORE LIMS"]["database_dir"]
+
+    private_config = configparser.ConfigParser()
+    private_config.read("/projects/galaxy/tools/cba/config/secret.cfg")
+    SERVICE_PASSWORD = private_config["CORE LIMS"]["service password"]
+
     source = sys.argv[1]  
     #source = 'CBA' # For testing purposes
     if source == 'CBA':
-        build_data_warehouse('CBA',cba_pertinent_experiments,'svc-corePFS@jax.org', 'hRbP&6K&(Qvw')
+        build_data_warehouse('CBA',cba_pertinent_experiments,SERVICE_USERNAME, SERVICE_PASSWORD)
+        # TODO Create CBA views here
+        #e. g. create_cba_strain_view()
     elif source == 'KOMP':
-        build_data_warehouse('KOMP',komp_pertinent_experiments,'svc-corePFS@jax.org', 'hRbP&6K&(Qvw')
+        build_data_warehouse('KOMP',komp_pertinent_experiments,SERVICE_USERNAME, SERVICE_PASSWORD)
+        create_komp_strain_view()
+        create_komp_experiment_view()
     else:
         print("Please specify either CBA or KOMP")
         return

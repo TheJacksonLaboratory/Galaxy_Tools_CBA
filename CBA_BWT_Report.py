@@ -25,7 +25,7 @@ from io import BytesIO as IO
     Galaxy calls main() which parses the commandline arguments and then calls fetch_report()
     The warehouse builder calls body_weight_data_warehouse()
 """
-ROOT_DIR = '.'
+
 
 pertinent_experiments = [
         'CBA_BODY_WEIGHT_EXPERIMENT',
@@ -368,7 +368,6 @@ def main():
     private_config = configparser.ConfigParser()
     private_config.read("/projects/galaxy/tools/cba/config/secret.cfg")
     SERVICE_PASSWORD = private_config["CORE LIMS"]["service password"]
-    #ROOT_DIR = public_config["CORE LIMS"]["root_dir"]   
     
     # Check if the user has access to CBA
     #if not(has_core_access(args.user, SERVICE_USERNAME, SERVICE_PASSWORD)):
