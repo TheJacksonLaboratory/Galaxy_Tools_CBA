@@ -292,8 +292,9 @@ def table_exists(conn, table_name):
 
 def create_sqlite_view(connection, source, view_name:str, sql:str):
     # Create a view in the SQLite database
-    connection = create_database(f"/projects/galaxy/tools/cba/data/{source}-warehouse.db")
+    connection = sqlite3.connect(f"/projects/galaxy/tools/cba/data/{source}-warehouse.db")
     cursor = connection.cursor()
+    cursor.execute(f'DROP VIEW IF EXISTS {view_name}')
     cursor.execute(f'CREATE VIEW IF NOT EXISTS {view_name} AS {sql}')
     connection.commit()
     cursor.close()  # Note the close() here
