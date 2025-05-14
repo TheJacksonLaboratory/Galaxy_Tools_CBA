@@ -288,9 +288,11 @@ class CBAAssayHandler(QueryHandler):
 		
         self.activeFilter = r"Active eq True and " \
                              r"EXPERIMENT/Active eq True and " \
-                             r"ENTITY/pfs.MOUSE_SAMPLE_LOT/Active eq True and " \
-                             r"ENTITY/pfs.MOUSE_SAMPLE_LOT/SAMPLE/pfs.MOUSE_SAMPLE/Active eq True"
-
+                             r"ENTITY/pfs.MOUSE_SAMPLE_LOT/Active eq True "
+    
+                             #r"ENTITY/pfs.MOUSE_SAMPLE_LOT/Active eq True and " \
+                             #r"ENTITY/pfs.MOUSE_SAMPLE_LOT/SAMPLE/pfs.MOUSE_SAMPLE/Active eq True"
+    
         self.jaxstrainFilter = r"ENTITY/pfs.MOUSE_SAMPLE_LOT/SAMPLE/pfs.MOUSE_SAMPLE/MOUSESAMPLE_STRAIN/Barcode eq '{0}'"
         
         self.cbbList = cbbList
