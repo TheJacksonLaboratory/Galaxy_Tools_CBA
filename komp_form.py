@@ -69,5 +69,12 @@ def get_all_komp_experiments():
     return request_values
 
 
+def get_exp_statuses():
+    j = load_file()
+    request_values = [(value, value, 0) for value in j['KOMP_EXP_STATUS']] 
+    request_values.insert(0,("",'',0))
+    return request_values
+
+
 if __name__ == '__main__':
     print(get_bwt_sample_fields())
