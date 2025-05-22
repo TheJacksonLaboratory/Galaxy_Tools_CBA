@@ -25,7 +25,7 @@ def main():
     parser.add_argument("-u", "--user", help = "Show Output")
     parser.add_argument("-j", "--jaxstrain", help = "Show Output", nargs='?', const='')
     args = parser.parse_args() 
-
+   
     public_config = configparser.ConfigParser()
     public_config.read("/projects/galaxy/tools/cba/config/setup.cfg")
     SERVICE_USERNAME = public_config["CORE LIMS"]["service username"]
@@ -43,7 +43,7 @@ def main():
     unpublishedBool = False
     inactiveBool = False
     summaryBool = False
-    jaxstrain = ''
+    jaxstrainList = []
     
     for opt in args.options.split(","):
         publishedBool = True if opt == 'p' else publishedBool
@@ -65,12 +65,11 @@ def main():
         f_to_test_date = datetime.strftime(datetime.strptime(args.to_test_date, '%m-%d-%Y'), '%Y-%m-%d') 
     else:
         f_to_test_date = None
- 
-    if args.jaxstrain:
-        jaxstrain = args.jaxstrain
+    
+    jaxstrainList = returnList(args.jaxstrain) if args.jaxstrain else []  # Make it a list
     
     newObj = runQuery.CBAAssayHandler(cbbList, requestList, templateList, \
-        f_from_test_date, f_to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD) # Need to add unpublishedBool
+        f_from_test_date, f_to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrainList, SERVICE_USERNAME, SERVICE_PASSWORD) # Need to add unpublishedBool
         
     dfList = (newObj.controller())
     data = newObj.writeFile(dfList)
@@ -80,7 +79,7 @@ def main():
 def has_cba_access(user, service_username, service_password):
     has_cba_access = False
     check_access_query = runQuery.QueryHandler(service_username, service_password)
-    employee_string = f"EMPLOYEE?&expand=PROJECT&$filter=contains(CI_USERNAME, '{user.lower()}') and PROJECT/any(a:a/Name eq 'Center for Biometric Analysis')"
+    employee_string = f"EMPLOYEE_LIMITED?&expand=PROJECT&$filter=contains(CI_USERNAME, '{user.lower()}') and PROJECT/any(a:a/Name eq 'Center for Biometric Analysis')"
     result_data = check_access_query.runQuery(check_access_query.queryBase + employee_string, 'xml')
     json_data = json.loads(result_data)
     if len(json_data['value']) > 0:

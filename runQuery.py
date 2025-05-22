@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 import cba_assay
 import base64
 import asyncio 
-from aiohttp_retry import RetryClient
+from aiohttp_retry import RetryClient, ExponentialRetry
 from datetime import datetime
 import configparser  
 
@@ -104,7 +104,8 @@ class QueryHandler():
                 else:
                     valueLs = content['value']
                     num_entities = len(valueLs)
-                    allJson = pd.DataFrame([flatten_json(d) for d in valueLs])
+                    
+                    allJson_pd = pd.DataFrame([flatten_json(d) for d in valueLs])
 
                     self.max_records = content.get("@odata.count")
 
@@ -129,10 +130,12 @@ class QueryHandler():
                         for page in self.responses:
                             json_data = json.loads(page.decode('utf-8'))
                             if len(json_data['value']) > 0:
-                                allJson = pd.concat([allJson,[flatten_json(d) for d in json_data['value']]],axis=0,ignore_index=True, sort=True)
+                                allJson_pd = pd.concat([allJson_pd,\
+                                                        pd.DataFrame([flatten_json(d) for d in json_data['value']])],\
+                                                        axis=0,ignore_index=True, sort=True)
 
                         self.responses = []
-                    df = pd.DataFrame(allJson)
+                    df = pd.DataFrame(allJson_pd)
                     return df
         except Timeout as e:
             print("\nTimeout occurred:" + repr(e) + " QUERY: " + query)
@@ -184,7 +187,7 @@ class QueryHandler():
             
 
     async def fetch(self, url, session):
-        async with session.get(url, retry_attempts=5, retry_for_statuses={401}) as response:            #raise_for_status=True
+        async with session.get(url) as response:            #raise_for_status=True
             return await response.read()
 
     async def run(self):
@@ -202,8 +205,8 @@ class QueryHandler():
         else:
             chunk_count = self.max_pagesize * chunk        
 
-        async with RetryClient(headers=headers, raise_for_status=False) as session:
-                
+        retry_options = ExponentialRetry(attempts=5)
+        async with RetryClient(headers=headers, raise_for_status=False, retry_options=retry_options) as session:
             for i in range(self.page_counter, self.page_counter + chunk):
                 task = asyncio.ensure_future(self.fetch(self.skip_query.format(i+1), session))                
                 tasks.append(task)
@@ -304,7 +307,7 @@ class CBAAssayHandler(QueryHandler):
         self.unpublished = unpublishedBool
         self.inactive = inactiveBool
         self.summary = summaryBool
-        self.jaxstrain = jaxstrain
+        self.jaxstrainList = jaxstrain
         self.userFilter = userFilter
         
 
@@ -492,16 +495,7 @@ class CBAAssayHandler(QueryHandler):
                 filters += r"$filter=(" + self.userFilter  + ")"
                 append = True
         
-        # Do I have the value of jaxstrain at this point?
-        """
-        if self.jaxstrain:
-            jaxstrainfilterStr = self.jaxstrainFilter.format(self.jaxstrain)
-            if append:
-                filters += r" and (" + jaxstrainfilterStr + ")" 
-            else:
-                filters += r"$filter=(" + jaxstrainfilterStr + ")"
-                append = True
-        """
+       
         return filters
 
     def writeFile(self, dfList):
@@ -553,20 +547,28 @@ class CBAAssayHandler(QueryHandler):
     # resultDataFrameLs is actually a list of tuples. 
     # The first element is the name of the experiment and the second is the dataframe.
     def clientsideFilters(self, resultDataFrameLs):  
+        # TODO: Support multiple strains
         try:
             # If the JAXSTRAIN filter is set remove the non-complying entities.
-            if self.jaxstrain is None or len(self.jaxstrain) == 0 or self.jaxstrain == '':
-                return resultDataFrameLs  # i.e. do nothing
+            if self.jaxstrainList is None or len(self.jaxstrainList) == 0 :
+                    return resultDataFrameLs  # i.e. do nothing
             
             if resultDataFrameLs is None or len(resultDataFrameLs) == 0:
                 return resultDataFrameLs # i.e. do nothing
-                
+            
+            # If there is more than one jaxstrain we want to include both on the results
+            # If there is only one jaxstrain we want to include only that one
             for i in range(0,len(resultDataFrameLs)):
-                a,df = resultDataFrameLs[i]
-                # df is a Dataframe. Remove all the rows from b where b.Strain <> self.jaxstrain
-                df = df[df.Strain == self.jaxstrain]
-                resultDataFrameLs[i] = (a,df)
-                
+                filtered_df = pd.DataFrame()
+                a,src_df = resultDataFrameLs[i]
+                for jaxstrain in self.jaxstrainList:
+                    # src_df is a Dataframe. Remove all the rows from b where b.Strain <> self.jaxstrain
+                    column_names = src_df.columns.tolist()
+                    if 'ENTITY.SAMPLE.MOUSESAMPLE_STRAIN.Barcode' in column_names:
+                        filtered_df = pd.concat([filtered_df, src_df[src_df["ENTITY.SAMPLE.MOUSESAMPLE_STRAIN.Barcode"] == jaxstrain]])  # For non-summary report   
+                    elif 'Strain' in column_names:
+                        filtered_df = pd.concat([filtered_df, src_df[src_df.Strain == jaxstrain]]) # For SUMMARY report
+                resultDataFrameLs[i] = (a,filtered_df)
             
         except Exception as e:
             print("\nException occurred:" + repr(e))

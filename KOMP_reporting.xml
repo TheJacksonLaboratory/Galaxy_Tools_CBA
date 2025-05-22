@@ -9,7 +9,7 @@
  <inputs>
     <param format="txt" name="komp_request" multiple="true" value="" type="select" label="KOMP Request" dynamic_options="get_request_fields()"/>
     <param format="txt" name="komp_batch" multiple="true" value="" type="select" label="KOMP Batch" dynamic_options="get_batch_fields()" />
-    <param format="txt" name="experiment" multiple="true" type="select" value=""  label="Experiment" dynamic_options="get_experiment_fields()" />
+    <param format="txt" name="experiment" multiple="true" type="select" value=""  label="Experiment" dynamic_options="get_all_komp_experiments()" />
     <param format="txt" name="line" multiple="false" type="select" value=""  label="Line" dynamic_options="get_line_fields()" />
     <param format="txt" name="from_test_date" type="text" label="From Test Date *05-29-2012" />
     <param format="txt" name="to_test_date" type="text" label="To Test Date *05-29-2020" />	

@@ -69,7 +69,8 @@ def main():
         jaxstrain = args.jaxstrain
     
     newObj = runQuery.CBAAssayHandler(cbbList, requestList, templateList, \
-        f_from_test_date, f_to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,'KOMP') 
+        f_from_test_date, f_to_test_date, publishedBool, unpublishedBool, inactiveBool, summaryBool, \
+		jaxstrain, SERVICE_USERNAME, SERVICE_PASSWORD,'','KOMP') 
         
     dfList = (newObj.controller())
     data = newObj.writeFile(dfList)
@@ -79,7 +80,7 @@ def main():
 def has_komp_access(user, service_username, service_password):
     has_komp_access = False
     check_access_query = runQuery.QueryHandler(service_username, service_password)
-    employee_string = f"EMPLOYEE?&expand=PROJECT&$filter=contains(CI_USERNAME, '{user.lower()}') and PROJECT/any(a:a/Name eq 'Center for Biometric Analysis' or a/Name eq 'Knockout Mouse Project')"
+    employee_string = f"EMPLOYEE_LIMITED?&expand=PROJECT&$filter=contains(CI_USERNAME, '{user.lower()}') and PROJECT/any(a:a/Name eq 'Center for Biometric Analysis')"
     result_data = check_access_query.runQuery(check_access_query.queryBase + employee_string, 'xml')
     json_data = json.loads(result_data)
     if len(json_data['value']) > 0:

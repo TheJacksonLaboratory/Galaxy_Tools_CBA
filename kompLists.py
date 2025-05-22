@@ -1,4 +1,5 @@
 
+import configparser
 import os
 import sys
 import json
@@ -11,11 +12,24 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 sys.path.append(BASE_DIR)
 
+public_config = configparser.ConfigParser()
+public_config.read("/projects/galaxy/tools/cba/config/setup.cfg")
+SERVICE_USERNAME = public_config["CORE LIMS"]["service username"]
+
+private_config = configparser.ConfigParser()
+private_config.read("/projects/galaxy/tools/cba/config/secret.cfg")
+SERVICE_PASSWORD = private_config["CORE LIMS"]["service password"]
+
+query = QueryHandler(SERVICE_USERNAME, SERVICE_PASSWORD,"KOMP") # The third param is the service abreviation: CBA, KOMP,...
+
+KOMP_REQUEST_LIST = query.runQuery(query.queryBase + "KOMP_REQUEST?$count=true")["Barcode"].tolist()
+KOMP_BATCH_LIST = query.runQuery(query.queryBase + "KOMP_BATCH?$count=true")["Barcode"].tolist()
+
+
 # Populate sropdowns from dt warehouse
-connection = sqlite3.connect(DATABASE_DIR + "KOMP-warehouse.db")
+connection = sqlite3.connect("/projects/galaxy/tools/cba/data/KOMP-warehouse.db")
 df = pd.read_sql_query("SELECT DISTINCT Experiment FROM vKompExperiment", connection)
 KOMP_EXPERIMENTS = df.iloc[:, 0].to_list()
-
 df = pd.read_sql_query("SELECT DISTINCT Strain FROM vKompStrain", connection)
 KOMP_LINE_LIST = df.iloc[:, 0].to_list()
 connection.close()
@@ -86,15 +100,14 @@ KOMP_EXP_STATUS = [
 odata = {}
 
 odata["KOMP_LINE_LIST"] = KOMP_LINE_LIST
-# Unused? odata["KOMP_REQUEST_LIST"] = KOMP_REQUEST_LIST
-# Unused? odata["KOMP_BATCH_LIST"] = KOMP_BATCH_LIST
+odata["KOMP_REQUEST_LIST"] = KOMP_REQUEST_LIST
+odata["KOMP_BATCH_LIST"] = KOMP_BATCH_LIST
 odata["KOMP_EXPERIMENTS"] = KOMP_EXPERIMENTS
 odata["KOMP_BWT_LINES"] = KOMP_BWT_LINES
 odata["KOMP_BWT_SAMPLES"] = KOMP_BWT_SAMPLES
 odata["KOMP_BWT_CUSTOMER_SAMPLE_NAME"] = KOMP_BWT_CUSTOMER_SAMPLE_NAME
 odata["KOMP_BWT_EXPERIMENTS"] = KOMP_BWT_EXPERIMENTS
 odata["KOMP_BWT_EXPERIMENT_BARCODES"] = KOMP_BWT_EXPERIMENT_BARCODES
-odata["KOMP_ALL_EXPERIMENTS"] = KOMP_ALL_EXPERIMENTS
 odata["KOMP_ALL_EXPERIMENTS"] = KOMP_ALL_EXPERIMENTS
 odata["KOMP_EXP_STATUS"] = KOMP_EXP_STATUS
 

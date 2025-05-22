@@ -148,7 +148,7 @@ def fetch_report(komp_customer_id_ls,
     
     newObj = runQuery.CBAAssayHandler([], [], template_ls, \
             from_test_date, to_test_date, publishedBool, unpublishedBool, inactiveBool, \
-                summaryBool, jaxstrain_ls, 'svc-corePFS@jax.org', 'hRbP&6K&(Qvw','KOMP')   # TODO - Get from config file
+                summaryBool, jaxstrain_ls, 'svc-corePFS@jax.org', 'hRbP&6K&(Qvw','','KOMP')   # TODO - Get from config file
     
     data = newObj.writeFile(df_ls)
     sys.stdout.buffer.write(data.getbuffer())
