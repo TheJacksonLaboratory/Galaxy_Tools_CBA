@@ -40,7 +40,7 @@ def meta_column_names():
         "EXPERIMENT.EXPERIMENT_ROOM.Name":"Procedure_Room",
         "EXPERIMENT.JAX_EXPERIMENT_STARTDATE": "Experiment_Date",
         "EXPERIMENT.JAX_EXPERIMENT_STATUS":"Experiment_Status", #added 11/7/2024 for KOMP
-        "EXPERIMENT.EXPERIMENT_TESTER.Name":"Default_Tester_Name",# 4/11/2025 MMcF
+        "EXPERIMENT.EXPERIMENT_TESTER.Name":"Tester_Name",# 4/11/2025 MMcF - Reverted back djp 4/29/2025
         "EXPERIMENT.EXPERIMENT_INSTRUMENT.Name":"Balance", #3/4/2/2025 djp                                                                 
         #"EXPERIMENT.EXPERIMENT_TESTER.Barcode":"Tester_Name_Barcode", #testing for Caroline 11/9/2023
     #ASSAY ATTRIBUTES IN COMMON
@@ -71,7 +71,7 @@ def meta_column_names():
             "ASSAY_DATA.JAX_ASSAY_STEPS":"Steps",
             "ASSAY_DATA.JAX_ASSAY_TEST_DATE":"Test_Date",
             "ASSAY_DATA.JAX_ASSAY_TESTORDER":"Test_Order",
-            "ASSAY_DATA.JAX_ASSAY_TESTER":"Tester_Name",
+            "ASSAY_DATA.JAX_ASSAY_TESTER":"Assay_Tester_Name",  #Changed - Only used by KOMP - djp 4/29/2025
             "ASSAY_DATA.JAX_ASSAY_TODAYDATE":"Date_Added",
     #MEP - CBA BASELINE GLUCOSE ASSAY
         "ASSAY_DATA.JAX_ASSAY_TIMEPOINT_BASEGLUCOSE":"Baseline_Glucose_(mg/dL)",
