@@ -83,18 +83,6 @@ keep_columns = [
         
         
 
-# Stanard function to check if a user has access to the CBA
-def has_core_access(user, service_username, service_password):
-    has_komp_access = False
-    check_access_query = runQuery.QueryHandler(service_username, service_password)
-    employee_string = f"EMPLOYEE?&expand=PROJECT&$filter=contains(CI_USERNAME, '{user.lower()}') and PROJECT/any(a:a/Name eq 'Center for Biometric Analysis')"
-    result_data = check_access_query.runQuery(check_access_query.queryBase + employee_string, 'xml')
-    json_data = json.loads(result_data)
-    if len(json_data['value']) > 0:
-        has_komp_access = True
-    return has_komp_access
-
-
 # Turn a comma separated list on the command into a python list
 def returnList(pList):
     if len(pList) == 0:
@@ -131,9 +119,10 @@ def fetch_report(cbbList,
                  miceLs
                  ):
     # Generate the report from the so-called data warehouse based on the commandline args.
+    #pd.set_option('display.max_rows', None) # Let's see all the rows.
     
     # Get the whole shebang then start removing rows that do not match the filter
-    dw_df = pd.read_csv('/projects/galaxy/tools/cba/data/CBA_BWT_raw_data.csv')
+    dw_df = pd.read_csv('/projects/galaxy/tools/cba/data/CBA_BWT_raw_data.csv',low_memory=False)
 
     #Start with CBA_Request
     dw_df = filter(dw_df,"CBA_Request",requestList)
@@ -156,12 +145,11 @@ def fetch_report(cbbList,
     if to_test_date:    
         dw_df = dw_df[dw_df['Experiment_Date'] <= to_test_date] 
     
-    dw_df = filter(dw_df,"Sample",cbbList)
-    
+    dw_df = filter(dw_df,"Sample",miceLs)
+    #print(dw_df)
     # Write the data to a file
     dw_df.to_csv(sys.stdout,index=False)
-    #dw_df.to_csv("/projects/galaxy/tools/cba/data/CBA_BWT.csv",index=False)
-    #write_to_excel(dw_df)
+    
     return
 
 
@@ -369,10 +357,6 @@ def main():
     private_config.read("/projects/galaxy/tools/cba/config/secret.cfg")
     SERVICE_PASSWORD = private_config["CORE LIMS"]["service password"]
     
-    # Check if the user has access to CBA
-    #if not(has_core_access(args.user, SERVICE_USERNAME, SERVICE_PASSWORD)):
-    #    raise Exception("User %s does not have access to CBA" % args.user) 
-
     # Initialize the variables
     publishedBool = False
     unpublishedBool = False
