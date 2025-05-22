@@ -112,7 +112,7 @@ def fetch_report(komp_customer_id_ls,
             
             experiment_status_in_clause = build_in_clause(experiment_status_ls)
             if(len(experiment_status_in_clause) > 0):
-                where_clause += f"Experiment_Status {experiment_status_in_clause} AND "
+                where_clause += f"Experiment_Status {experiment_status_in_clause.replace('_',' ')} AND "
                
             # If the user specified a date range then add it to the where clause
             

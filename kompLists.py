@@ -87,15 +87,15 @@ KOMP_ALL_EXPERIMENTS = [
 	"KOMP_STARTLE_PPI_EXPERIMENT"]
 
 KOMP_EXP_STATUS = [
-    "'Cancelled'",
-    "'Data Public'",
-    "'Data Sent to DCC'",
-    "'Pending'",
-    "'Pre-upload QC Failed'",
-    "'Ready for Data Review'",
-    "'Review Completed'",
-    "'Review Passed'",
-    "'Waiting for Final Review'" ]
+    "Cancelled",
+    "Data_Public",
+    "Data_Sent_to_DCC",
+    "Pending",
+    "Pre-upload_QC_Failed",
+    "Ready_for_Data_Review",
+    "Review_Completed",
+    "Review_Passed",
+    "Waiting_for_Final_Review" ]
 
 odata = {}
 
