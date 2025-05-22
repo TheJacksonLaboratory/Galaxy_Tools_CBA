@@ -156,14 +156,14 @@ def main():
     summaryBool = False
     templateList = []   # EXPERIMENTs
     unpublishedBool = False
-
-    
-    for opt in args.options.split(","):
-        publishedBool = True if opt == 'p' else publishedBool
-        inactiveBool = True if opt == 'i' else inactiveBool
-        summaryBool = True if opt == 's' else summaryBool
-        unpublishedBool = True if opt == 'u' else unpublishedBool
-    
+    """
+    if args.options is not None and len(args.options) > 0:
+		for opt in args.options.split(","):
+			publishedBool = True if opt == 'p' else publishedBool
+			inactiveBool = True if opt == 'i' else inactiveBool
+			summaryBool = True if opt == 's' else summaryBool
+			unpublishedBool = True if opt == 'u' else unpublishedBool
+    """
     cbbList = returnList(args.batch) if args.batch else []
     requestList = returnList(args.request) if args.request else []
     templateList = returnList(args.experiment) if args.experiment else []
@@ -192,7 +192,7 @@ def main():
     
     newObj = runQuery.CBAAssayHandler([], [], templateList, \
                 f_from_test_date, f_to_test_date, publishedBool, unpublishedBool, inactiveBool, \
-                summaryBool, jaxstrainList, 'svc-corePFS@jax.org', 'hRbP&6K&(Qvw','CBA')   # TODO - Get from config file
+                summaryBool, jaxstrainList, 'svc-corePFS@jax.org', 'hRbP&6K&(Qvw','','CBA')   # TODO - Get from config file
     		
     data = newObj.writeFile(dfList)
     sys.stdout.buffer.write(data.getbuffer())
