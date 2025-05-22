@@ -1,7 +1,7 @@
 <tool id="KOMP Body Weight Report" name="KOMP Body Weight Report" version="0.0.1">
     <description>Pulls a report on body weights of certain experiments</description>
     <command interpreter="/projects/galaxy/tools/cba/p3env/bin/python">
-    KOMP_BWT_Report.py -r $komp_sample -b $komp_customer_id -e $experiment -x $experiment_barcode -f $from_test_date -t $to_test_date -o $options -j $line -u $__user_email__ > $out_file2 
+    KOMP_BWT_Report.py -r $komp_sample -b $komp_customer_id -e $experiment -x $experiment_barcode -f $from_test_date -t $to_test_date -j $line -u $__user_email__ > $out_file2 
     </command>
 
     <code file="komp_form.py" />
@@ -13,6 +13,13 @@
         <param format="txt" name="line" multiple="true" type="select" value=""  label="Line" dynamic_options="get_bwt_line_fields()" />
         <param format="txt" name="from_test_date" type="text" label="From Test Date *05-29-2012" />
         <param format="txt" name="to_test_date" type="text" label="To Test Date *05-29-2020" />	
+		<!--
+        <param name="options" type="select" label="Get" multiple="true" display="checkboxes">
+            <option value="p">Published:</option>
+            <option value="u">Unpublished:</option>
+            <option value="i">Include Inactive:</option>
+        </param>
+		-->
     </inputs>
 	
     <outputs>
