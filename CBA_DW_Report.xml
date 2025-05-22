@@ -1,7 +1,7 @@
-<tool id="CBA_DW_Report" name="CBA Reports Datawarehouse (alpha)" version="0.0.1">
+<tool id="CBA_DW_Report" name="CBA Reports Datawarehouse" version="0.0.1">
     <description>Pull reports from CBA Data warehouse</description>
     <command interpreter="/projects/galaxy/tools/cba/p3env/bin/python3">
-    CBA_DW_Report.py  -r $cba_request -b $cba_batch -e $experiment -f $from_test_date -t $to_test_date -o $options -j $line -u $__user_email__ > $out_file1
+    CBA_DW_Report.py  -r $cba_request -b $cba_batch -e $experiment -f $from_test_date -t $to_test_date -j $line -u $__user_email__ > $out_file1
     </command>
 
 
@@ -13,11 +13,13 @@
     <param format="txt" name="line" multiple="false" type="select" value=""  label="Line" dynamic_options="get_line_fields()" />
     <param format="txt" name="from_test_date" type="text" label="From Test Date *05-29-2012" />
     <param format="txt" name="to_test_date" type="text" label="To Test Date *05-29-2020" />	
+	<!--
     <param name="options" type="select" label="Get" multiple="true" display="checkboxes">
 		<option value="p">Published:</option>
 		<option value="u">Unpublished:</option>
 		<option value="i">Include Inactive:</option>
     </param>
+	-->
 </inputs>
 
 <outputs>
