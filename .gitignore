@@ -29,3 +29,11 @@ EKG data/B6572.csv
 y_maze_data_processing_macro_v5.R.copy
 output.csv
 *.csv
+data/CBA-warehouse.db
+cba.exps
+data/KOMP-warehouse.db
+x.xlsx
+data/oldCBA_BWT_raw_data.xlsx
+komp_assay.py
+data/oldCBA_BWT_raw_data.xlsx
+venv/Lib/site-packages/_yaml/__init__.py
