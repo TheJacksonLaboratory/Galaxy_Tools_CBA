@@ -1,7 +1,7 @@
 <tool id="CBA Body Weight Report" name="CBA Body Weight Report" version="0.0.1">
     <description>Pulls a report on body weights of certain experiments</description>
     <command interpreter="/projects/galaxy/tools/cba/p3env/bin/python">
-    CBA_BWT_Report.py -r $cba_request -b $cba_batch -e $experiment -m mice -f $from_test_date -t $to_test_date -o $options -j $line -u $__user_email__ > $out_file2 
+    CBA_BWT_Report.py -r $cba_request -b $cba_batch -e $experiment -m $mice -f $from_test_date -t $to_test_date -j $line -u $__user_email__ > $out_file2 
     </command>
 
     <code file="pfs_form.py" />
@@ -13,11 +13,13 @@
         <param format="txt" name="mice" multiple="true" type="select" value=""  label="Mice" dynamic_options="get_mice_fields()" />
         <param format="txt" name="from_test_date" type="text" label="From Test Date *05-29-2012" />
         <param format="txt" name="to_test_date" type="text" label="To Test Date *05-29-2020" />	
+		<!--
         <param name="options" type="select" label="Get" multiple="true" display="checkboxes">
             <option value="p">Published:</option>
             <option value="u">Unpublished:</option>
             <option value="i">Active Only:</option>
         </param>
+		-->
     </inputs>
 
     <outputs>
