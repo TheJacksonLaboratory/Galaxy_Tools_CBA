@@ -55,7 +55,7 @@ KOMP_BWT_EXPERIMENTS = list(set(item_ls))
 KOMP_BWT_EXPERIMENTS.sort()
 
 
-series_ls = df["Experiment_Barcode"]
+series_ls = df["Experiment"]
 series_ls = series_ls.astype(str)
 item_ls = series_ls.to_list()
 KOMP_BWT_EXPERIMENT_BARCODES = list(set(item_ls))   

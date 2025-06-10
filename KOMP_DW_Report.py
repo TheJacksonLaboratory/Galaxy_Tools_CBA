@@ -108,7 +108,7 @@ def fetch_report(komp_customer_id_ls,
                 
             experiment_barcode_in_clause = build_in_clause(experiment_barcode_ls)
             if(len(experiment_barcode_in_clause) > 0):
-                where_clause += f"Experiment_Barcode {experiment_barcode_in_clause} AND "
+                where_clause += f"Experiment {experiment_barcode_in_clause} AND "
             
             experiment_status_in_clause = build_in_clause(experiment_status_ls)
             if(len(experiment_status_in_clause) > 0):

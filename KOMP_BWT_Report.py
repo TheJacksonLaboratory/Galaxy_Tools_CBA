@@ -109,7 +109,7 @@ def fetch_report(komp_customer_id_ls,
     # Next experiment name
     dw_df = filter(dw_df,"ExperimentName",templateList)
     
-    dw_df = filter(dw_df,"Experiment_Barcode",experiment_barcode_ls)
+    dw_df = filter(dw_df,"Experiment",experiment_barcode_ls)
     
     # Next JAX Strain
     dw_df = filter(dw_df,"Strain",jaxstrain_ls)
