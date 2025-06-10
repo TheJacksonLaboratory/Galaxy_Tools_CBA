@@ -48,38 +48,9 @@ cba_pertinent_experiments = [
 ]
 
 cba_pertinent_experiments_test = [
-"CBA_PIEZO_5_DAY_EXPERIMENT",
+    "CBA_Y_MAZE_SPONTANEOUS_ALTERNATION_EXPERIMENT",
 ]
 
-cba_pertinent_experiments_old = [
-    'CBA_BODY_WEIGHT_EXPERIMENT',  # Has EXPERIMENT_INSTRUMENT 
-    'CBA_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT', # Has EXPERIMENT_INSTRUMENT
-        'CBA_BASELINE_GLUCOSE_EXPERIMENT',
-        'CBA_DEXA_EXPERIMENT',
-    'CBA_BASIC_ECHOCARDIOGRAPHY_EXPERIMENT',  # Has EXPERIMENT_INSTRUMENT
-        'CBA_FEAR_CONDITIONING_EXPERIMENT',
-        'CBA_FRAILTY_EXPERIMENT',
-            'CBA_GLUCOSE_CLAMPS_EXPERIMENT', # No records
-        'CBA_GLUCOSE_TOLERANCE_TEST_EXPERIMENT',
-        'CBA_GRIP_STRENGTH_EXPERIMENT', 
-        'CBA_GTT_PLUS_INSULIN_EXPERIMENT',
-            'CBA_HEART_WEIGHT_EXPERIMENT', # No records
-    'CBA_INDIRECT_CALORIMETRY_24H_FAST_REFEED_EXPERIMENT', # Has EXPERIMENT_INSTRUMENT
-        'CBA_INSULIN_TOLERANCE_TEST_EXPERIMENT',
-        'CBA_INTRAOCULAR_PRESSURE_EXPERIMENT',
-            'CBA_MAGNETIC_RESONANCE_IMAGING_EXPERIMENT', # No records
-    'CBA_MICRO_CT_EXPERIMENT',  # Has EXPERIMENT_INSTRUMENT
-            'CBA_MRI_BRAIN_EXPERIMENT', # No records
-            'CBA_MMTT_PLUS_HORMONE_EXPERIMENT', # No records
-        'CBA_NMR_BODY_COMPOSITION_EXPERIMENT',
-    'CBA_NON_INVASIVE_BLOOD_PRESSURE_EXPERIMENT',# Has EXPERIMENT_INSTRUMENT
-    'CBA_PIEZO_5_DAY_EXPERIMENT',  # Has EXPERIMENT_INSTRUMENT
-            'CBA_PIEZOELECTRIC_SLEEP_MONITOR_SYSTEM_EXPERIMENT', # No records
-            'CBA_PYRUVATE_TOLERANCE_TEST_EXPERIMENT', # No records
-    'CBA_UNCONSCIOUS_ELECTROCARDIOGRAM_EXPERIMENT',  # Has EXPERIMENT_INSTRUMENT
-            'CBA_VOLUNTARY_RUNNING_WHEELS_EXPERIMENT' # No records
-    ]
-    
 komp_pertinent_experiments = [
 	'KOMP_BODY_WEIGHT_EXPERIMENT',
 	'KOMP_AUDITORY_BRAINSTEM_RESPONSE_EXPERIMENT',
@@ -196,7 +167,7 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
         # Dates are experiment CREATE DATEs
         epoch_date = None
         if source == 'CBA':
-            epoch_date =  datetime(2019, 1, 9)  # CBA epoch 1/9/2019
+            epoch_date =  datetime(2019, 1, 1)  # CBA epoch 8/1/2019
         else:
             epoch_date =  datetime(2024, 1, 1) # The KOMP epoch 
             
@@ -213,10 +184,8 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
             templateList = [experiment]  # Can't handle multiple templates in this version of the code  
             complete_response_ls = []
             print(experiment + "  " + formatted_time)
-            
-            while create_to_test_date <=  current_date: 
-                my_filter = f" Created ge {datetime.strftime(create_from_test_date, '%Y-%m-%dT%H:%M:%SZ')} and Created le {datetime.strftime(create_to_test_date, '%Y-%m-%dT%H:%M:%SZ')}"
-               
+            while create_from_test_date <=  current_date:
+                my_filter = f" Created ge {datetime.strftime(create_from_test_date, '%Y-%m-%dT%H:%M:%SZ')} and Created lt {datetime.strftime(create_to_test_date, '%Y-%m-%dT%H:%M:%SZ')}"
                 tuple_ls = get_experiments(cbbList, 
                                 requestList, 
                                 templateList, 
@@ -233,11 +202,11 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
                                 SERVICE_PASSWORD
                                 )
                 
-                print("Number of tuples:" + str(len(tuple_ls)) + ", " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-                print("From test date:" + str(create_from_test_date) + ", To test date: " + str(create_to_test_date))
+                if len(tuple_ls) > 0:
+                    print("From test date:" + str(create_from_test_date) + ", To test date: " + str(create_to_test_date))
                 
                 complete_response_ls.extend(tuple_ls)
-                create_from_test_date = create_to_test_date + timedelta(days=1) # Start the next batch at the day after the last one
+                create_from_test_date = create_to_test_date 
                 create_to_test_date = create_to_test_date + timedelta(days=120) # ~4 months later
                 
             print("      Total of responses: " + str(len(complete_response_ls)))
@@ -252,6 +221,9 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
                 df.insert(loc=0,column="ExperimentName",value=templateList[0])
                 df.fillna('', inplace = True)
                 
+                if templateList[0].startswith('CBA'):
+                    df = ensure_mandatory_cols(df)
+                    
                 try:
                     print(templateList[0] + ": Number of rows in dataframe: " + str(df.shape[0]))
                     df.to_sql(templateList[0], connection, if_exists='append', index=False)
@@ -265,6 +237,19 @@ def build_data_warehouse(source,pertinent_experiments,SERVICE_USERNAME, SERVICE_
         close_db(connection)
     return 
 
+def ensure_mandatory_cols(df):
+    """
+    Checks if the mandatory columns are present in the database.
+    """
+    mandatory_cols = ['JMUS','Strain_Name','Tester_Name']  # Known to be missing in some tables
+    loc = len(df.columns)
+    for col in mandatory_cols:
+        if col not in df.columns:
+            df.insert(loc, col, '')
+            #raise ValueError(f"Mandatory columns {mandatory_cols} are not present in the DataFrame. Please check the data source or the query.")
+    return df
+
+    
 def table_exists(conn, table_name):
     """
     Checks if a table exists in a SQLite database.
