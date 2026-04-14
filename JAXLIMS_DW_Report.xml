@@ -1,0 +1,33 @@
+<tool id="JAXLIMS DW Report" name="JAXLIMS Data Warehouse Report" version="0.0.1">
+    <description>Pulls a report from the data warehouse</description>
+    <command interpreter="/projects/galaxy/tools/cba/p3env/bin/python3">
+    JAXLIMS_DW_Report.py -r $jaxlims_sample -p $study -e $experiment -s $experiment_status -f $from_test_date -t $to_test_date -j $line -c $mouse_name_substring -u $__user_email__ > $out_file2 
+    </command>
+
+    <code file="jaxlims_form.py" />
+    <inputs>
+        <param format="txt" name="jaxlims_sample" multiple="true" value="" type="select" label="KOMP Mice" dynamic_options="get_jaxlims_sample_fields()"/>
+        <param format="txt" name="mouse_name_substring" type="text" label="Mouse name starts with (e.g. 'R5')" />
+        <param format="txt" name="experiment" multiple="true" type="select" value=""  label="Experiment Name" dynamic_options="get_all_jaxlims_experiments()" />
+        <param format="txt" name="experiment_status" multiple="true" type="select" value=""  label="Experiment Status" dynamic_options="get_jaxlims_exp_statuses()" /
+        <param format="txt" name="study" multiple="true" type="select" value=""  label="Study" dynamic_options="get_jaxlims_study_fields()" />
+        <param format="txt" name="line" multiple="true" type="select" value=""  label="Line" dynamic_options="get_jaxlims_line_fields()" />
+        <param format="txt" name="from_test_date" type="text" label="From Test Date YYYY-MM-DD" />
+        <param format="txt" name="to_test_date" type="text" label="To Test Date YYYY-MM-DD" />	
+		<!--
+        <param name="options" type="select" label="Get" multiple="true" display="checkboxes">
+            <option 
+			-->
+    </inputs>
+	
+    <outputs>
+        <data name="out_file2" format="xlsx" metadata_source="input1"/>
+    </outputs>
+
+    <help>
+
+**What it does**
+Produces a report of JAXLIMS mouse and assay data for JAXLIMS experiments/assays.
+
+</help>
+</tool>
